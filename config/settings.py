@@ -148,3 +148,13 @@ LOGOUT_REDIRECT_URL = 'login'
 # Onde os arquivos de mídia serão salvos no seu projeto
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media' # Cria uma pasta 'media' na raiz do projeto
+
+STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# Adicione esta linha para o Django achar sua pasta 'static' criada agora
+STATICFILES_DIRS = [
+    BASE_DIR / "static",
+]
+
+# ... resto do arquivo

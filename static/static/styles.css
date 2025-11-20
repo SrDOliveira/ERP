@@ -1,0 +1,148 @@
+/* --- 1. FONTE E CORES GERAIS --- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+    --primary-color: #0066FF; /* Azul SaaS (Tipo Bling/ContaAzul) */
+    --secondary-color: #6c757d;
+    --success-color: #10B981; /* Verde Moderno */
+    --danger-color: #EF4444;  /* Vermelho Suave */
+    --warning-color: #F59E0B; /* Laranja Suave */
+    --bg-body: #F3F4F6;       /* Cinza muito claro de fundo */
+    --text-main: #1F2937;     /* Preto não tão preto */
+    --text-muted: #6B7280;
+    --sidebar-width: 260px;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-body);
+    color: var(--text-main);
+    font-size: 0.92rem; /* Letra levemente menor e mais elegante */
+}
+
+/* --- 2. SIDEBAR (MENU LATERAL) --- */
+.sidebar {
+    background-color: #FFFFFF !important; /* Fundo Branco (Tendência atual) */
+    border-right: 1px solid #E5E7EB;
+    box-shadow: none; /* Remove sombra pesada */
+    width: var(--sidebar-width);
+}
+
+.sidebar h4 {
+    color: var(--primary-color) !important;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+}
+
+.sidebar a {
+    color: var(--text-muted) !important;
+    font-weight: 500;
+    border-radius: 8px;
+    margin-bottom: 4px;
+    padding: 10px 15px;
+}
+
+.sidebar a:hover, .sidebar a.active {
+    background-color: #EFF6FF !important; /* Azulzinho bem claro no hover */
+    color: var(--primary-color) !important;
+}
+
+.sidebar i {
+    width: 20px;
+    text-align: center;
+    margin-right: 8px;
+}
+
+/* Títulos pequenos no menu (Cadastros, Gestão...) */
+.sidebar p.text-uppercase {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #9CA3AF !important;
+    margin-top: 20px;
+    margin-bottom: 8px;
+    padding-left: 15px;
+}
+
+/* --- 3. CARDS E CONTEÚDO --- */
+.card {
+    border: none;
+    border-radius: 12px; /* Cantos mais arredondados */
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); /* Sombra Apple/Stripe */
+    background-color: #FFFFFF;
+    margin-bottom: 24px;
+}
+
+.card-header {
+    background-color: #FFFFFF;
+    border-bottom: 1px solid #F3F4F6;
+    padding: 15px 20px;
+    font-weight: 600;
+    border-radius: 12px 12px 0 0 !important;
+}
+
+/* Cards de KPI (Dashboard) */
+.card-counter {
+    border-radius: 12px;
+    border: 1px solid #E5E7EB;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    transition: transform 0.2s;
+}
+.card-counter:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+/* --- 4. BOTÕES E FORMULÁRIOS --- */
+.btn {
+    border-radius: 8px;
+    font-weight: 500;
+    padding: 8px 16px;
+    font-size: 0.9rem;
+    box-shadow: none !important;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-primary:hover {
+    background-color: #0052CC;
+}
+
+.form-control, .form-select {
+    border-radius: 8px;
+    border: 1px solid #D1D5DB;
+    padding: 10px 12px;
+    font-size: 0.9rem;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.15);
+}
+
+/* --- 5. TABELAS --- */
+.table thead th {
+    background-color: #F9FAFB;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border-bottom: 1px solid #E5E7EB;
+    padding: 12px 16px;
+}
+
+.table tbody td {
+    padding: 14px 16px;
+    vertical-align: middle;
+    border-bottom: 1px solid #F3F4F6;
+    color: #374151;
+}
+
+.badge {
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
