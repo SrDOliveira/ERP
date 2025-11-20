@@ -4,6 +4,7 @@ from django.core.exceptions import ValidationError
 from .models import Produto, MovimentoCaixa, Usuario, Caixa
 from .models import Categoria, Fornecedor, Cliente
 from .models import Empresa # Importe Empresa se não tiver
+from django.contrib.auth.models import User
 
 # --- Formulário de Produto ---
 class ProdutoForm(forms.ModelForm):
@@ -123,4 +124,23 @@ class ConfiguracaoEmpresaForm(forms.ModelForm):
             'mensagem_cupom': forms.TextInput(attrs={'class': 'form-control'}),
             'cor_sistema': forms.TextInput(attrs={'class': 'form-control', 'type': 'color'}),
             'logo': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+        }
+
+        # Adicione este import no topo se não tiver
+from django.contrib.auth.models import User 
+
+# ... (outros forms)
+
+class UsuarioForm(forms.ModelForm):
+    senha = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'form-control'}), required=False, help_text="Deixe em branco para manter a atual (na edição)")
+    
+    class Meta:
+        model = Usuario
+        fields = ['username', 'first_name', 'last_name', 'email', 'cargo']
+        widgets = {
+            'username': forms.TextInput(attrs={'class': 'form-control'}),
+            'first_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'last_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control'}),
+            'cargo': forms.Select(attrs={'class': 'form-select'}),
         }

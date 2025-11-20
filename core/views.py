@@ -1,18 +1,36 @@
-# core/views.py (VERSÃO FINAL COMPLETA)
+# core/views.py
 
-from django.contrib import messages # <--- Importante para os avisos de "Sucesso"
+# --- 1. IMPORTS DO DJANGO ---
+from django.contrib import messages
 from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import render, redirect, get_object_or_404
 from django.template.loader import render_to_string
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
-from django.db.models import Sum, F  # <--- Adicione o F aqui
+from django.db.models import Sum, F, Count, ExpressionWrapper, FloatField
 from django.utils import timezone
 from django.contrib.admin.views.decorators import staff_member_required
-from .forms import CategoriaForm, FornecedorForm, ClienteForm
-from django.db.models import Count # Adicione o Count nos imports lá em cima se não tiver
-from django.db.models import F, ExpressionWrapper, FloatField
 
+# --- 2. IMPORTS DE TERCEIROS ---
+from weasyprint import HTML
+
+# --- 3. IMPORTS DOS SEUS MODELOS (Banco de Dados) ---
+from .models import (
+    Venda, ItemVenda, Produto, Cliente, Lancamento, Empresa, 
+    MovimentoCaixa, Caixa, FormaPagamento, Usuario,
+    Categoria, Fornecedor
+)
+
+# --- 4. IMPORTS DOS SEUS FORMULÁRIOS ---
+from .forms import (
+    ProdutoForm, AberturaCaixaForm, FechamentoCaixaForm,
+    CategoriaForm, FornecedorForm, ClienteForm, 
+    ConfiguracaoEmpresaForm, UsuarioForm
+)
+
+# =========================================================
+#  Abaixo começam as funções (dashboard, pdv, etc...)
+# =========================================================
 # Biblioteca de PDF
 from weasyprint import HTML
 
@@ -676,3 +694,76 @@ def painel_estoque(request):
         'lista_inteligente': lista_inteligente[:10], # Top 10 críticos
         'total_produtos': produtos.count()
     })
+    # =========================================================
+#  GESTÃO DE EQUIPE
+# =========================================================
+@login_required
+def lista_equipe(request):
+    # Segurança: Vendedor não vê isso
+    if request.user.cargo == 'VENDEDOR':
+        return HttpResponseForbidden("Acesso Negado")
+        
+    # Lista apenas usuários da MESMA empresa
+    usuarios = Usuario.objects.filter(empresa=request.user.empresa)
+    return render(request, 'core/lista_equipe.html', {'usuarios': usuarios})
+
+@login_required
+def adicionar_colaborador(request):
+    if request.user.cargo == 'VENDEDOR': return HttpResponseForbidden()
+
+    if request.method == 'POST':
+        form = UsuarioForm(request.POST)
+        if form.is_valid():
+            novo_user = form.save(commit=False)
+            novo_user.empresa = request.user.empresa # Vincula à loja atual
+            
+            # Define a senha corretamente (Criptografa)
+            senha_texto = form.cleaned_data.get('senha')
+            if senha_texto:
+                novo_user.set_password(senha_texto)
+            else:
+                novo_user.set_password('123456') # Senha padrão se não informar
+                
+            novo_user.save()
+            return redirect('lista_equipe')
+    else:
+        form = UsuarioForm()
+        
+    return render(request, 'core/form_generico.html', {'form': form, 'titulo': 'Novo Colaborador'})
+
+@login_required
+def editar_colaborador(request, user_id):
+    if request.user.cargo == 'VENDEDOR': return HttpResponseForbidden()
+
+    # Busca usuário garantindo que é da mesma empresa
+    colaborador = get_object_or_404(Usuario, id=user_id, empresa=request.user.empresa)
+    
+    if request.method == 'POST':
+        form = UsuarioForm(request.POST, instance=colaborador)
+        if form.is_valid():
+            user_editado = form.save(commit=False)
+            
+            # Se preencheu senha nova, troca. Se não, mantém a antiga.
+            senha_nova = form.cleaned_data.get('senha')
+            if senha_nova:
+                user_editado.set_password(senha_nova)
+                
+            user_editado.save()
+            return redirect('lista_equipe')
+    else:
+        form = UsuarioForm(instance=colaborador)
+        
+    return render(request, 'core/form_generico.html', {'form': form, 'titulo': 'Editar Colaborador'})
+
+@login_required
+def excluir_colaborador(request, user_id):
+    if request.user.cargo == 'VENDEDOR': return HttpResponseForbidden()
+    
+    colaborador = get_object_or_404(Usuario, id=user_id, empresa=request.user.empresa)
+    
+    # Impede que o usuário se exclua
+    if colaborador.id == request.user.id:
+        return HttpResponseForbidden("Você não pode excluir a si mesmo.")
+        
+    colaborador.delete()
+    return redirect('lista_equipe')

@@ -104,6 +104,11 @@
             
             {% if user.cargo != 'VENDEDOR' %}
                 <p class="text-uppercase text-muted small fw-bold mt-3 mb-1 ms-2">Gestão</p>
+
+                <a href="{% url 'lista_equipe' %}" class="text-white">
+                <i class="bi bi-person-badge-fill me-2"></i> Equipe / Usuários
+                </a>
+
                 <a href="{% url 'financeiro' %}" class="text-success">
                     <i class="bi bi-wallet2 me-2"></i> Financeiro
                 </a>

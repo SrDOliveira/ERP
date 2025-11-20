@@ -43,4 +43,10 @@ urlpatterns = [
     path('configuracoes/', views.configuracoes, name='configuracoes'),
 
     path('estoque/painel/', views.painel_estoque, name='painel_estoque'),
+
+    # Equipe
+    path('equipe/', views.lista_equipe, name='lista_equipe'),
+    path('equipe/novo/', views.adicionar_colaborador, name='adicionar_colaborador'),
+    path('equipe/editar/<int:user_id>/', views.editar_colaborador, name='editar_colaborador'),
+    path('equipe/excluir/<int:user_id>/', views.excluir_colaborador, name='excluir_colaborador'),
 ]
