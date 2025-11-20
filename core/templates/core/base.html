@@ -2,8 +2,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema SaaS - {% block title %}{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Sistema SaaS - {% block title %}{% endblock %}</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
@@ -11,167 +10,148 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <style>
-        body { background-color: #f4f6f9; min-height: 100vh; }
+        body { background-color: #f4f6f9; min-height: 100vh; overflow-x: hidden; }
         
-        /* Estilo da Barra Lateral */
+        /* --- SIDEBAR (MENU LATERAL) --- */
         .sidebar { 
             min-height: 100vh; 
             background-color: #212529; 
             color: white; 
             width: 260px;
             flex-shrink: 0;
+            transition: all 0.3s; /* Animação suave */
+            z-index: 1000;
         }
+        
         .sidebar a { 
-            color: #adb5bd; 
-            text-decoration: none; 
-            padding: 12px 20px; 
-            display: block; 
-            transition: 0.3s;
-            border-radius: 4px;
-            margin-bottom: 5px;
+            color: #adb5bd; text-decoration: none; padding: 12px 20px; 
+            display: block; transition: 0.3s; border-radius: 4px; margin-bottom: 5px;
         }
-        .sidebar a:hover { 
-            background-color: #343a40; 
-            color: white; 
-            padding-left: 25px; 
-        }
+        .sidebar a:hover { background-color: #343a40; color: white; padding-left: 25px; }
         
-        /* Conteúdo Principal */
-        .main-wrapper { width: 100%; overflow-x: hidden; display: flex; flex-direction: column; }
+        /* --- LAYOUT PRINCIPAL --- */
+        .d-flex-wrapper { display: flex; width: 100%; }
+        .main-wrapper { width: 100%; display: flex; flex-direction: column; transition: all 0.3s; }
         .content { padding: 30px; flex-grow: 1; }
-        
-        /* Cards do Dashboard */
-        .card-counter { 
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1); 
-            padding: 20px; 
-            background-color: #fff; 
-            border-radius: 10px; 
-            position: relative; 
-            overflow: hidden;
-            margin-bottom: 20px;
-        }
-        .card-counter i { 
-            font-size: 4em; 
-            opacity: 0.1; 
-            position: absolute; 
-            right: 10px; 
-            top: 10px; 
+
+        /* --- AJUSTES MOBILE (A MÁGICA ACONTECE AQUI) --- */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                left: -260px; /* Esconde o menu fora da tela */
+                height: 100%;
+                box-shadow: 5px 0 15px rgba(0,0,0,0.3);
+            }
+            .sidebar.active {
+                left: 0; /* Traz o menu de volta quando ativo */
+            }
+            .overlay {
+                display: none;
+                position: fixed;
+                width: 100%; height: 100%;
+                background: rgba(0,0,0,0.5);
+                z-index: 999;
+            }
+            .overlay.active { display: block; } /* Escurece o fundo */
+            .content { padding: 15px; } /* Menos margem no celular */
         }
 
-        /* Esconder na impressão */
+        /* Cards do Dashboard */
+        .card-counter { 
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1); padding: 20px; 
+            background-color: #fff; border-radius: 10px; position: relative; 
+            overflow: hidden; margin-bottom: 20px;
+        }
+        .card-counter i { font-size: 4em; opacity: 0.1; position: absolute; right: 10px; top: 10px; }
+
+        /* Impressão */
         @media print {
-            .sidebar, .navbar { display: none !important; }
-            .main-wrapper { width: 100% !important; }
+            .sidebar, .navbar, .btn-toggle-menu { display: none !important; }
+            .main-wrapper { width: 100% !important; margin: 0 !important; }
             .content { padding: 0 !important; }
         }
     </style>
 </head>
 <body>
 
-<div class="d-flex">
-    <div class="sidebar p-3">
-        <div class="text-center mb-4">
-            <h4 class="fw-bold text-white mb-0">
-                <i class="bi bi-shop"></i> Minha Loja
-            </h4>
-            {% if user.empresa.ativa == False %}
-                <span class="badge bg-danger">BLOQUEADA</span>
-            {% endif %}
-        </div>
+<div class="overlay" id="overlay" onclick="toggleMenu()"></div>
+
+<div class="d-flex-wrapper">
+    <div class="sidebar p-3" id="sidebar">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4 class="fw-bold text-white mb-0"><i class="bi bi-shop"></i> Minha Loja</h4>
+            </div>
+        
+        {% if user.empresa.ativa == False %}
+            <div class="text-center mb-3"><span class="badge bg-danger">BLOQUEADA</span></div>
+        {% endif %}
         <hr class="text-secondary">
         
         <nav>
-            <a href="{% url 'dashboard' %}">
-                <i class="bi bi-speedometer2 me-2"></i> Dashboard
-            </a>
-            
-            <a href="{% url 'criar_venda' %}" class="text-white bg-primary fw-bold">
-                <i class="bi bi-cart4 me-2"></i> REALIZAR VENDA
-            </a>
+            <a href="{% url 'dashboard' %}"><i class="bi bi-speedometer2 me-2"></i> Dashboard</a>
+            <a href="{% url 'criar_venda' %}" class="text-white bg-primary fw-bold"><i class="bi bi-cart4 me-2"></i> REALIZAR VENDA</a>
             
             <p class="text-uppercase text-muted small fw-bold mt-3 mb-1 ms-2">Cadastros</p>
             <a href="{% url 'lista_clientes' %}"><i class="bi bi-people me-2"></i> Clientes</a>
-            
             <a href="{% url 'lista_produtos' %}" class="d-flex justify-content-between align-items-center">
                 <span><i class="bi bi-box-seam me-2"></i> Produtos</span>
                 {% if notificacao_estoque_baixo > 0 %}
                     <span class="badge bg-danger rounded-pill">{{ notificacao_estoque_baixo }}</span>
                 {% endif %}
             </a>
-
             <a href="{% url 'lista_categorias' %}"><i class="bi bi-tags me-2"></i> Categorias</a>
             <a href="{% url 'lista_fornecedores' %}"><i class="bi bi-truck me-2"></i> Fornecedores</a>
             
             {% if user.cargo != 'VENDEDOR' %}
                 <p class="text-uppercase text-muted small fw-bold mt-3 mb-1 ms-2">Gestão</p>
-
-                <a href="{% url 'lista_equipe' %}" class="text-white">
-                <i class="bi bi-person-badge-fill me-2"></i> Equipe / Usuários
-                </a>
-
-                <a href="{% url 'financeiro' %}" class="text-success">
-                    <i class="bi bi-wallet2 me-2"></i> Financeiro
-                </a>
-                <a href="{% url 'painel_estoque' %}" class="text-warning">
-                    <i class="bi bi-boxes me-2"></i> Gestão Estoque
-                </a>
-                <a href="{% url 'relatorios' %}" class="text-white">
-                    <i class="bi bi-bar-chart-line-fill me-2"></i> Relatórios
-                </a>
+                <a href="{% url 'financeiro' %}" class="text-success"><i class="bi bi-wallet2 me-2"></i> Financeiro</a>
+                <a href="{% url 'painel_estoque' %}" class="text-warning"><i class="bi bi-boxes me-2"></i> Gestão Estoque</a>
+                <a href="{% url 'relatorios' %}" class="text-white"><i class="bi bi-bar-chart-line-fill me-2"></i> Relatórios</a>
+                <a href="{% url 'lista_equipe' %}" class="text-info"><i class="bi bi-person-badge-fill me-2"></i> Equipe</a>
             {% endif %}
 
-            <a href="{% url 'minhas_comissoes' %}" class="text-info">
-                <i class="bi bi-cash-coin me-2"></i> Comissões
-            </a>
+            <a href="{% url 'minhas_comissoes' %}" class="text-info"><i class="bi bi-cash-coin me-2"></i> Comissões</a>
             
             <hr class="text-secondary mt-4">
-            
             {% if user.cargo != 'VENDEDOR' %}
-            <a href="{% url 'configuracoes' %}" class="text-light">
-                <i class="bi bi-gear me-2"></i> Configurações
-            </a>
+            <a href="{% url 'configuracoes' %}" class="text-light"><i class="bi bi-gear me-2"></i> Configurações</a>
             {% endif %}
-
-            <a href="{% url 'gerenciar_caixa' %}" class="text-light">
-                <i class="bi bi-cash-stack me-2"></i> Meu Caixa
-            </a>
+            <a href="{% url 'gerenciar_caixa' %}" class="text-light"><i class="bi bi-cash-stack me-2"></i> Meu Caixa</a>
             
             {% if user.is_staff %}
-            <a href="{% url 'saas_painel' %}" class="text-warning mt-3 border border-warning">
-                <i class="bi bi-clouds-fill me-2"></i> Painel SaaS
-            </a>
+            <a href="{% url 'saas_painel' %}" class="text-warning mt-3 border border-warning"><i class="bi bi-clouds-fill me-2"></i> Painel SaaS</a>
             {% endif %}
-
-            <a href="{% url 'logout' %}" class="text-danger mt-2">
-                <i class="bi bi-box-arrow-left me-2"></i> Sair
-            </a>
+            <a href="{% url 'logout' %}" class="text-danger mt-2"><i class="bi bi-box-arrow-left me-2"></i> Sair</a>
         </nav>
     </div>
 
     <div class="main-wrapper">
-        <nav class="navbar navbar-light bg-white shadow-sm px-4 py-3 justify-content-between">
-            <span class="navbar-brand mb-0 h5 d-flex align-items-center">
-                {% if user.empresa.logo %}
-                    <img src="{{ user.empresa.logo.url }}" alt="Logo" style="height: 40px; margin-right: 10px;">
-                {% else %}
-                    <i class="bi bi-shop text-secondary me-2"></i> 
-                {% endif %}
-                
-                <span>
-                    Olá, {{ user.first_name|default:user.username }} 
-                    <small class="text-muted">({{ user.empresa.nome_fantasia }})</small>
+        <nav class="navbar navbar-light bg-white shadow-sm px-3 py-3 d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center">
+                <button class="btn btn-outline-dark d-md-none me-3 btn-toggle-menu" onclick="toggleMenu()">
+                    <i class="bi bi-list fs-4"></i>
+                </button>
+
+                <span class="navbar-brand mb-0 h5 d-flex align-items-center">
+                    {% if user.empresa.logo %}
+                        <img src="{{ user.empresa.logo.url }}" alt="Logo" style="height: 35px; margin-right: 10px;">
+                    {% endif %}
+                    
+                    <span class="d-none d-sm-inline">
+                        Olá, {{ user.first_name|default:user.username }} 
+                    </span>
                 </span>
-            </span>
+            </div>
             
             <span class="badge bg-secondary">{{ user.get_cargo_display|default:"Admin" }}</span>
         </nav>
 
         {% if messages %}
-            <div class="px-4 mt-3">
+            <div class="px-3 mt-3">
                 {% for message in messages %}
                     <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
                         {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
                 {% endfor %}
             </div>
@@ -185,5 +165,15 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    // Função para abrir/fechar menu no celular
+    function toggleMenu() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+        sidebar.classList.toggle('active'); // Adiciona/remove classe .active
+        overlay.classList.toggle('active'); // Mostra/esconde fundo escuro
+    }
+</script>
 </body>
 </html>
