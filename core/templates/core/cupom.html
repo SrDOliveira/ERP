@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Cupom #{{ venda.id }}</title>
+    <style>
+        /* Configuração para Impressora Térmica */
+        @media print {
+            @page { margin: 0; size: auto; }
+            body { margin: 0; padding: 0; }
+            .no-print { display: none; }
+        }
+        
+        body {
+            font-family: 'Courier New', Courier, monospace; /* Fonte monoespaçada clássica */
+            font-size: 12px;
+            width: 80mm; /* Largura padrão */
+            margin: auto;
+            background: #fff;
+            padding: 10px;
+        }
+
+        .conteudo { width: 100%; }
+        .centralizado { text-align: center; }
+        .divisor { border-top: 1px dashed #000; margin: 5px 0; }
+        .flex { display: flex; justify-content: space-between; }
+        .negrito { fontWeight: bold; }
+        
+        /* Botão de Imprimir na Tela */
+        .btn-print {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background: #000;
+            color: #fff;
+            text-align: center;
+            text-decoration: none;
+            font-family: sans-serif;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="no-print">
+        <button onclick="window.print()" class="btn-print">🖨️ IMPRIMIR CUPOM</button>
+    </div>
+
+    <div class="conteudo">
+        <div class="centralizado">
+            {% if venda.empresa.logo %}
+                <img src="{{ venda.empresa.logo.url }}" style="max-width: 100px; margin-bottom: 5px; filter: grayscale(100%);"><br>
+                {% endif %}
+            
+            <h3 style="margin: 0;">{{ venda.empresa.nome_fantasia }}</h3>
+            <span>CNPJ: {{ venda.empresa.cnpj }}</span><br>
+            <small>{{ venda.data_venda|date:"d/m/Y H:i:s" }}</small>
+        </div>
+        
+        <div class="divisor"></div>
+        <div class="centralizado negrito">CUPOM NÃO FISCAL #{{ venda.id }}</div>
+        <div class="divisor"></div>
+
+        <table style="width: 100%; text-align: left;">
+            <thead>
+                <tr>
+                    <th style="width: 50%;">Item</th>
+                    <th style="width: 20%;">Qtd</th>
+                    <th style="width: 30%; text-align: right;">Val</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in venda.itens.all %}
+                <tr>
+                    <td>{{ item.produto.nome|truncatechars:18 }}</td>
+                    <td>{{ item.quantidade }}</td>
+                    <td style="text-align: right;">{{ item.subtotal }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="divisor"></div>
+
+        <div class="flex">
+            <span>TOTAL BRUTO:</span>
+            <span>R$ {{ venda.valor_total }}</span>
+        </div>
+        {% if venda.desconto > 0 %}
+        <div class="flex">
+            <span>DESCONTO:</span>
+            <span>- R$ {{ venda.desconto }}</span>
+        </div>
+        {% endif %}
+        
+        <div class="divisor"></div>
+        
+        <div class="flex negrito" style="font-size: 14px;">
+            <span>TOTAL A PAGAR:</span>
+            <span>R$ {{ venda.valor_total }}</span>
+        </div>
+        
+        <div class="flex" style="margin-top: 5px;">
+            <span>Forma Pagto:</span>
+            <span>{{ venda.forma_pagamento.nome|default:"-" }}</span>
+        </div>
+
+        <div class="divisor"></div>
+
+        <div class="centralizado">
+            CLIENTE: {{ venda.cliente.nome|default:"Consumidor Final" }}<br>
+            Vendedor: {{ venda.vendedor.first_name|default:venda.vendedor.username }}<br>
+            <br>
+            *** OBRIGADO PELA PREFERÊNCIA ***<br>
+            <small style="display: block; margin-top: 5px;">{{ venda.empresa.mensagem_cupom }}</small>
+        </div>
+    </div>
+
+</body>
+</html>

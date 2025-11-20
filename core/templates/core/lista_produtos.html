@@ -1,0 +1,148 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Meus Produtos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3>Estoque de Produtos</h3>
+        <div class="d-flex gap-2">
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-outline-secondary active" id="btnList" onclick="mudarVisualizacao('lista')">
+                    <i class="bi bi-list-ul"></i> Lista
+                </button>
+                <button type="button" class="btn btn-outline-secondary" id="btnGrid" onclick="mudarVisualizacao('grade')">
+                    <i class="bi bi-grid-3x3-gap-fill"></i> Grade
+                </button>
+            </div>
+            
+            <a href="{% url 'catalogo_qr' %}" class="btn btn-outline-dark">
+                <i class="bi bi-qr-code"></i> Etiquetas
+            </a>
+
+            <a href="{% url 'adicionar_produto' %}" class="btn btn-primary">
+                <i class="bi bi-plus-lg"></i> Novo Produto
+            </a>
+        </div>
+    </div>
+
+    <div id="viewLista" class="card shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 80px;">Foto</th>
+                        <th>Produto</th>
+                        <th>Categoria</th>
+                        <th>Preço</th>
+                        <th>Estoque</th>
+                        <th class="text-end">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in produtos %}
+                    <tr>
+                        <td>
+                            {% if p.foto %}
+                                <img src="{{ p.foto.url }}" class="rounded" style="width: 50px; height: 50px; object-fit: cover;">
+                            {% else %}
+                                <div class="bg-secondary bg-opacity-10 rounded d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                                    <i class="bi bi-image text-muted"></i>
+                                </div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <strong>{{ p.nome }}</strong><br>
+                            <small class="text-muted">{{ p.codigo_barras|default:"--" }}</small>
+                        </td>
+                        <td><span class="badge bg-light text-dark border">{{ p.categoria.nome|default:"Geral" }}</span></td>
+                        <td class="fw-bold">R$ {{ p.preco_venda }}</td>
+                        <td>
+                            {% if p.estoque_atual <= p.estoque_minimo %}
+                                <span class="badge bg-danger">{{ p.estoque_atual }} (Baixo)</span>
+                            {% else %}
+                                <span class="badge bg-success">{{ p.estoque_atual }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <a href="{% url 'editar_produto' p.id %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                            <a href="{% url 'excluir_produto' p.id %}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Excluir?');"><i class="bi bi-trash"></i></a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="text-center py-4">Nenhum produto cadastrado.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="viewGrade" class="row g-3" style="display: none;">
+        {% for p in produtos %}
+        <div class="col-md-3 col-sm-6">
+            <div class="card h-100 shadow-sm">
+                <div style="height: 200px; overflow: hidden;" class="bg-light d-flex align-items-center justify-content-center position-relative">
+                    {% if p.foto %}
+                        <img src="{{ p.foto.url }}" class="card-img-top" style="height: 100%; width: 100%; object-fit: cover;">
+                    {% else %}
+                        <i class="bi bi-image text-secondary" style="font-size: 3rem;"></i>
+                    {% endif %}
+                    
+                    <span class="position-absolute bottom-0 end-0 bg-success text-white px-3 py-1 m-2 rounded-pill fw-bold">
+                        R$ {{ p.preco_venda }}
+                    </span>
+                </div>
+
+                <div class="card-body">
+                    <h5 class="card-title text-truncate" title="{{ p.nome }}">{{ p.nome }}</h5>
+                    <p class="card-text small text-muted mb-2">{{ p.categoria.nome|default:"Geral" }}</p>
+                    
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        {% if p.estoque_atual <= p.estoque_minimo %}
+                            <small class="text-danger fw-bold"><i class="bi bi-exclamation-circle"></i> {{ p.estoque_atual }} un</small>
+                        {% else %}
+                            <small class="text-success"><i class="bi bi-check-circle"></i> {{ p.estoque_atual }} un</small>
+                        {% endif %}
+                        
+                        <div>
+                            <a href="{% url 'editar_produto' p.id %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+</div>
+
+<script>
+    function mudarVisualizacao(modo) {
+        const lista = document.getElementById('viewLista');
+        const grade = document.getElementById('viewGrade');
+        const btnList = document.getElementById('btnList');
+        const btnGrid = document.getElementById('btnGrid');
+
+        if (modo === 'grade') {
+            lista.style.display = 'none';
+            grade.style.display = 'flex';
+            btnList.classList.remove('active');
+            btnGrid.classList.add('active');
+            localStorage.setItem('modoVisualizacao', 'grade');
+        } else {
+            lista.style.display = 'block';
+            grade.style.display = 'none';
+            btnList.classList.add('active');
+            btnGrid.classList.remove('active');
+            localStorage.setItem('modoVisualizacao', 'lista');
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        const modoSalvo = localStorage.getItem('modoVisualizacao');
+        if (modoSalvo === 'grade') {
+            mudarVisualizacao('grade');
+        }
+    });
+</script>
+{% endblock %}

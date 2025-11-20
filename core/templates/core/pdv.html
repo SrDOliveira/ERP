@@ -1,0 +1,152 @@
+{% extends 'core/base.html' %}
+
+{% block title %}PDV - Venda #{{ venda.id }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-box-seam"></i> Adicionar Produtos</h5>
+                </div>
+                <div class="card-body">
+                    <form action="{% url 'adicionar_item' venda.id %}" method="POST">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Selecione o Produto</label>
+                            <select name="produto" class="form-select form-select-lg" required autofocus>
+                                <option value="">-- Digite ou escolha --</option>
+                                {% for p in produtos %}
+                                <option value="{{ p.id }}">{{ p.nome }} - R$ {{ p.preco_venda }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-4">
+                                <label class="form-label">Qtd</label>
+                                <input type="number" name="quantidade" value="1" min="1" class="form-control form-control-lg">
+                            </div>
+                            <div class="col-8">
+                                <label>&nbsp;</label>
+                                <button type="submit" class="btn btn-primary btn-lg w-100">
+                                    <i class="bi bi-plus-circle"></i> ADICIONAR
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Venda #{{ venda.id }}</h5>
+                    <span class="badge bg-warning text-dark">{{ venda.get_status_display }}</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="p-3 bg-light border-bottom">
+                        <form method="POST">
+                            {% csrf_token %}
+                            <div class="input-group">
+                                <span class="input-group-text">Cliente</span>
+                                <select name="cliente" class="form-select" onchange="this.form.submit()">
+                                    <option value="">-- Selecione --</option>
+                                    {% for c in clientes %}
+                                    <option value="{{ c.id }}" {% if venda.cliente.id == c.id %}selected{% endif %}>
+                                        {{ c.nome }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                        <table class="table table-striped mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th class="text-center">Qtd</th>
+                                    <th class="text-end">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in venda.itens.all %}
+                                <tr>
+                                    <td>{{ item.produto.nome }}</td>
+                                    <td class="text-center">{{ item.quantidade }}</td>
+                                    <td class="text-end">R$ {{ item.subtotal }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted py-4">
+                                        Nenhum item adicionado ainda.
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card-footer bg-white border-top-0">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4>Total:</h4>
+                        <h2 class="text-success fw-bold">R$ {{ total }}</h2>
+                    </div>
+                    
+                    <div class="d-flex gap-2 mb-3">
+                        <a href="{% url 'gerar_orcamento_pdf' venda.id %}" target="_blank" class="btn btn-outline-primary flex-grow-1">
+                            <i class="bi bi-printer"></i> Orçamento A4
+                        </a>
+                        <a href="{% url 'imprimir_cupom' venda.id %}" target="_blank" class="btn btn-outline-dark flex-grow-1">
+                            <i class="bi bi-receipt"></i> Cupom
+                        </a>
+                    </div>
+
+                    <hr>
+
+                    <form method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="acao" value="fechar_venda">
+                        
+                        <div class="mb-3">
+                            <label class="fw-bold text-muted">Forma de Pagamento</label>
+                            <select name="forma_pagamento" class="form-select form-select-lg border-success" required>
+                                <option value="">-- Selecione --</option>
+                                {% for fp in formas_pagamento %}
+                                <option value="{{ fp.id }}">{{ fp.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="form-check form-switch mb-3 p-3 border rounded bg-light">
+                            <input class="form-check-input" type="checkbox" id="emitirFiscal" name="emitir_fiscal">
+                            <label class="form-check-label fw-bold" for="emitirFiscal">
+                                <i class="bi bi-receipt-cutoff"></i> Emitir Nota Fiscal (NFC-e)
+                            </label>
+                        </div>
+
+                        <button type="submit" class="btn btn-success btn-lg w-100 py-3">
+                            <i class="bi bi-check-circle-fill"></i> FINALIZAR VENDA (F2)
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'F2') {
+            // Foca no botão de finalizar se apertar F2
+            document.querySelector('button[type="submit"].btn-success').click();
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,98 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Financeiro{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h3>Fluxo de Caixa</h3>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'adicionar_despesa' %}" class="btn btn-danger">
+                <i class="bi bi-dash-circle"></i> Nova Despesa
+            </a>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Receitas (Pagas)</h6>
+                    <h3>R$ {{ total_receitas }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Despesas (Pagas)</h6>
+                    <h3>R$ {{ total_despesas }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card {% if saldo >= 0 %}bg-primary{% else %}bg-warning{% endif %} text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Saldo Atual</h6>
+                    <h3>R$ {{ saldo }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Vencimento</th>
+                        <th>Descrição</th>
+                        <th>Tipo</th>
+                        <th>Valor</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for l in lancamentos %}
+                    <tr>
+                        <td>{{ l.data_vencimento|date:"d/m/Y" }}</td>
+                        <td>
+                            {{ l.titulo }}
+                            {% if l.venda_origem %}
+                                <a href="{% url 'gerar_orcamento_pdf' l.venda_origem.id %}" target="_blank" class="text-decoration-none ms-2">
+                                    <i class="bi bi-file-pdf text-danger"></i>
+                                </a>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if l.tipo == 'RECEITA' %}
+                                <span class="text-success fw-bold"><i class="bi bi-arrow-up"></i> Receita</span>
+                            {% else %}
+                                <span class="text-danger fw-bold"><i class="bi bi-arrow-down"></i> Despesa</span>
+                            {% endif %}
+                        </td>
+                        <td class="{% if l.tipo == 'RECEITA' %}text-success{% else %}text-danger{% endif %} fw-bold">
+                            R$ {{ l.valor }}
+                        </td>
+                        <td>
+                            {% if l.pago %}
+                                <span class="badge bg-success">PAGO</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark">PENDENTE</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">Nenhum lançamento financeiro encontrado.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Catálogo de QR Codes</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #eee; }
+        
+        /* Estilo da Etiqueta na Tela */
+        .etiqueta {
+            background: white;
+            border: 1px dashed #ccc;
+            padding: 15px;
+            text-align: center;
+            page-break-inside: avoid; /* Evita cortar a etiqueta no meio da página */
+            height: 100%;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .qr-img { width: 120px; height: 120px; object-fit: contain; }
+        .prod-foto { width: 80px; height: 80px; object-fit: cover; border-radius: 50%; margin-bottom: 10px; border: 2px solid #eee; }
+        .preco { font-size: 1.5rem; font-weight: bold; color: #000; margin-top: 10px;}
+        
+        /* Configuração para IMPRESSORA */
+        @media print {
+            body { background: white; margin: 0; padding: 0; }
+            .no-print { display: none !important; } /* Esconde botões na hora de imprimir */
+            .etiqueta { border: 1px solid #000; } /* Borda sólida na impressão */
+            .container { width: 100% !important; max-width: none !important; margin: 0 !important; padding: 0 !important; }
+            .col-4 { width: 33.33333% !important; float: left; } /* Garante 3 colunas no papel */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container mt-3 mb-4 no-print d-flex justify-content-between align-items-center">
+        <div>
+            <a href="{% url 'lista_produtos' %}" class="btn btn-secondary">Voltar</a>
+            <h3 class="d-inline-block ms-3">Catálogo de Etiquetas</h3>
+        </div>
+        <button onclick="window.print()" class="btn btn-primary btn-lg">
+            🖨️ Imprimir Página
+        </button>
+    </div>
+
+    <div class="container bg-white p-4 shadow-sm">
+        <div class="row g-4">
+            {% for p in produtos %}
+            <div class="col-4 mb-4"> <div class="etiqueta">
+                    
+                    {% if p.foto %}
+                        <img src="{{ p.foto.url }}" class="prod-foto">
+                    {% else %}
+                        <div class="prod-foto d-flex align-items-center justify-content-center bg-light text-muted">
+                            <small>Sem foto</small>
+                        </div>
+                    {% endif %}
+                    
+                    <div>
+                        <h6 class="mb-1 text-uppercase fw-bold">{{ p.nome }}</h6>
+                        <small class="text-muted d-block">{{ p.codigo_barras|default:"" }}</small>
+                    </div>
+                    
+                    {% if p.qrcode_img %}
+                        <img src="{{ p.qrcode_img.url }}" class="qr-img my-2">
+                    {% else %}
+                        <div class="alert alert-warning p-1 small">
+                            Salve o produto para gerar QR
+                        </div>
+                    {% endif %}
+                    
+                    <div class="preco">R$ {{ p.preco_venda }}</div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12 text-center">
+                <p class="text-muted display-6">Nenhum produto cadastrado.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+</body>
+</html>

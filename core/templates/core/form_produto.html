@@ -1,0 +1,81 @@
+{% extends 'core/base.html' %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 800px;">
+    <div class="card shadow-sm">
+        <div class="card-header bg-white">
+            <h4 class="mb-0">{{ titulo }}</h4>
+        </div>
+        <div class="card-body">
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <label class="form-label">Nome do Produto</label>
+                        {{ form.nome }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Código de Barras</label>
+                        {{ form.codigo_barras }}
+                    </div>
+                    
+                    <div class="col-md-12">
+                        <label class="form-label">Categoria</label>
+                        {{ form.categoria }}
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Preço de Custo (R$)</label>
+                        {{ form.preco_custo }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Preço de Venda (R$)</label>
+                        {{ form.preco_venda }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Estoque Atual</label>
+                        {{ form.estoque_atual }}
+                    </div>
+
+                    <div class="col-md-12">
+                        <div class="p-3 bg-light border rounded">
+                            <label class="form-label fw-bold mb-2">Foto do Produto</label>
+                            
+                            <div class="d-flex align-items-center gap-3">
+                                {% if form.instance.foto %}
+                                    <div class="text-center">
+                                        <img src="{{ form.instance.foto.url }}" alt="Foto Atual" class="img-thumbnail" style="width: 100px; height: 100px; object-fit: cover;">
+                                        <div class="small text-muted mt-1">Atual</div>
+                                    </div>
+                                {% endif %}
+
+                                <div class="flex-grow-1">
+                                    {{ form.foto }}
+                                    <div class="form-text">Formatos aceitos: JPG, PNG. Deixe em branco para manter a atual.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-12">
+                        <label class="form-label">Descrição / Detalhes</label>
+                        {{ form.descricao }}
+                    </div>
+                </div>
+
+                <hr class="my-4">
+
+                <div class="d-flex justify-content-end gap-2">
+                    <a href="{% url 'lista_produtos' %}" class="btn btn-secondary">Cancelar</a>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-lg"></i> Salvar Produto
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

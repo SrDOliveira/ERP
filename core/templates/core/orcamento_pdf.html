@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Orçamento #{{ venda.id }}</title>
+    <style>
+        body { font-family: Helvetica, sans-serif; color: #333; }
+        .header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+        .loja-nome { font-size: 24px; font-weight: bold; }
+        .loja-detalhes { font-size: 12px; color: #666; }
+        
+        .cliente-box { background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th { background-color: #333; color: white; padding: 8px; text-align: left; }
+        td { border-bottom: 1px solid #ddd; padding: 8px; }
+        
+        .totais { text-align: right; margin-top: 20px; }
+        .valor-grande { font-size: 20px; font-weight: bold; color: #000; }
+        
+        .assinatura { margin-top: 80px; border-top: 1px solid #000; width: 200px; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="loja-nome">{{ venda.empresa.nome_fantasia }}</div>
+        <div class="loja-detalhes">
+            CNPJ: {{ venda.empresa.cnpj }}<br>
+            Data de Emissão: {{ venda.data_venda|date:"d/m/Y H:i" }}
+        </div>
+    </div>
+
+    <div class="cliente-box">
+        <strong>Cliente:</strong> {{ venda.cliente.nome|default:"Consumidor Final" }}<br>
+        <strong>Vendedor:</strong> {{ venda.vendedor.first_name }} ({{ venda.vendedor.username }})<br>
+        <strong>Status:</strong> {{ venda.get_status_display }}
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Produto</th>
+                <th>Qtd</th>
+                <th>Preço Unit.</th>
+                <th>Subtotal</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in venda.itens.all %}
+            <tr>
+                <td>{{ item.produto.nome }}</td>
+                <td>{{ item.quantidade }}</td>
+                <td>R$ {{ item.preco_unitario }}</td>
+                <td>R$ {{ item.subtotal }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="totais">
+        <p>Forma de Pagamento: {{ venda.get_forma_pagamento_display }}</p>
+        <p class="valor-grande">TOTAL: R$ {{ total_calculado }}</p>
+    </div>
+
+    <br><br>
+    <div class="assinatura">
+        Assinatura do Responsável
+    </div>
+</body>
+</html>

@@ -1,0 +1,100 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Minhas Comissões{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h3 class="mb-4"><i class="bi bi-cash-stack"></i> Relatório de Comissões</h3>
+
+    <div class="card shadow-sm mb-4 no-print">
+        <div class="card-body bg-light">
+            <form method="GET" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label">Data Início</label>
+                    <input type="date" name="data_ini" class="form-control" value="{{ data_ini }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Data Fim</label>
+                    <input type="date" name="data_fim" class="form-control" value="{{ data_fim }}">
+                </div>
+                
+                {% if user.cargo != 'VENDEDOR' %}
+                <div class="col-md-3">
+                    <label class="form-label">Filtrar Vendedor</label>
+                    <select name="vendedor" class="form-select">
+                        <option value="">Todos</option>
+                        {% for v in vendedores %}
+                        <option value="{{ v.id }}">{{ v.username }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+
+                <div class="col-md-3 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary w-100"><i class="bi bi-filter"></i> Filtrar</button>
+                    <button type="button" onclick="window.print()" class="btn btn-outline-dark"><i class="bi bi-printer"></i></button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card bg-white border-primary h-100">
+                <div class="card-body text-center">
+                    <h6 class="text-muted">Total Vendido no Período</h6>
+                    <h3 class="text-dark">R$ {{ total_vendido }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card bg-success text-white h-100">
+                <div class="card-body text-center">
+                    <h6 class="text-white-50">Sua Comissão a Receber</h6>
+                    <h3 class="fw-bold">R$ {{ total_comissao }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-white fw-bold">Detalhamento por Item Vendido</div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Data</th>
+                        <th>Venda #</th>
+                        <th>Vendedor</th>
+                        <th>Produto</th>
+                        <th>Valor Item</th>
+                        <th>%</th>
+                        <th>Comissão</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in itens %}
+                    <tr>
+                        <td>{{ item.venda.data_venda|date:"d/m/Y H:i" }}</td>
+                        <td>
+                            <a href="{% url 'imprimir_cupom' item.venda.id %}" target="_blank">
+                                #{{ item.venda.id }}
+                            </a>
+                        </td>
+                        <td>{{ item.venda.vendedor.username }}</td>
+                        <td>{{ item.produto.nome }}</td>
+                        <td>R$ {{ item.subtotal }}</td>
+                        <td>{{ item.produto.porcentagem_comissao }}%</td>
+                        <td class="fw-bold text-success">R$ {{ item.comissao_valor }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-4 text-muted">Nenhuma venda com comissão encontrada neste período.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

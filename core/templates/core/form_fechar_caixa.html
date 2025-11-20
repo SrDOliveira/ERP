@@ -1,0 +1,71 @@
+{% extends 'core/base.html' %}
+{% block title %}Fechar Caixa{% endblock %}
+{% block content %}
+<div class="container mt-4" style="max-width: 700px;">
+    <div class="card border-danger shadow">
+        <div class="card-header bg-danger text-white">
+            <h4 class="mb-0"><i class="bi bi-file-lock2"></i> Fechamento de Caixa</h4>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-light border mb-4">
+                <div class="row text-center">
+                    <div class="col-4 border-end">
+                        <small class="text-muted">Fundo Inicial</small>
+                        <h5 class="text-primary">R$ {{ movimento.valor_abertura }}</h5>
+                    </div>
+                    <div class="col-4 border-end">
+                        <small class="text-muted">Vendas (Dinheiro/Cartão)</small>
+                        <h5 class="text-success">+ R$ {{ total_vendido }}</h5>
+                    </div>
+                    <div class="col-4">
+                        <small class="text-muted">Esperado na Gaveta</small>
+                        <h4 class="fw-bold">R$ {{ valor_esperado }}</h4>
+                    </div>
+                </div>
+            </div>
+
+            <form method="POST">
+                {% csrf_token %}
+                
+                <div class="mb-4 text-center">
+                    <label class="form-label fw-bold fs-5">Quanto tem na gaveta agora?</label>
+                    <div class="input-group input-group-lg w-50 mx-auto">
+                        <span class="input-group-text bg-warning">R$</span>
+                        {{ form.valor_fechamento }}
+                    </div>
+                    <div class="form-text">Conte o dinheiro físico e comprovantes.</div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Observações (Justificar quebras)</label>
+                    {{ form.observacao_fechamento }}
+                </div>
+
+                <hr>
+                
+                <div class="bg-light p-3 rounded border">
+                    <h6 class="text-danger fw-bold mb-3"><i class="bi bi-shield-lock"></i> Autorização Obrigatória</h6>
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                    {% endif %}
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-2">
+                            <label>Gerente Responsável</label>
+                            {{ form.gerente }}
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label>Senha do Gerente</label>
+                            {{ form.senha_gerente }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-grid mt-4">
+                    <button type="submit" class="btn btn-danger btn-lg">CONFERIR E FECHAR CAIXA</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

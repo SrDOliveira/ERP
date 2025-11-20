@@ -1,0 +1,59 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Configurações da Loja{% endblock %}
+
+{% block content %}
+<div class="container mt-4" style="max-width: 700px;">
+    <div class="card shadow">
+        <div class="card-header bg-dark text-white">
+            <h4 class="mb-0"><i class="bi bi-gear-fill"></i> Dados da Loja</h4>
+        </div>
+        <div class="card-body">
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                
+                <div class="text-center mb-4">
+                    <label class="form-label fw-bold">Logomarca Atual</label><br>
+                    {% if form.instance.logo %}
+                        <img src="{{ form.instance.logo.url }}" style="max-height: 100px;" class="img-thumbnail">
+                    {% else %}
+                        <div class="badge bg-secondary p-3">Sem Logo</div>
+                    {% endif %}
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <label class="form-label">Nome Fantasia</label>
+                        {{ form.nome_fantasia }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">CNPJ</label>
+                        {{ form.cnpj }}
+                    </div>
+                    
+                    <div class="col-md-12">
+                        <label class="form-label">Logo da Loja (Para Cupons e Relatórios)</label>
+                        {{ form.logo }}
+                    </div>
+
+                    <div class="col-md-8">
+                        <label class="form-label">Mensagem de Rodapé (Cupom)</label>
+                        {{ form.mensagem_cupom }}
+                        <div class="form-text">Ex: "Trocas em até 7 dias com etiqueta."</div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <label class="form-label">Cor do Sistema</label>
+                        {{ form.cor_sistema }}
+                    </div>
+                </div>
+
+                <hr class="my-4">
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary btn-lg">Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

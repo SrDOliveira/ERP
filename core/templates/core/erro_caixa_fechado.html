@@ -1,0 +1,9 @@
+{% extends 'core/base.html' %}
+{% block content %}
+<div class="text-center mt-5">
+    <h1 class="text-warning display-1"><i class="bi bi-exclamation-triangle"></i></h1>
+    <h2>Caixa Fechado!</h2>
+    <p class="lead">Você precisa abrir o caixa antes de realizar vendas.</p>
+    <a href="{% url 'abrir_caixa' %}" class="btn btn-primary btn-lg mt-3">Abrir Caixa Agora</a>
+</div>
+{% endblock %}

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Contrato de Prestação de Serviços</title>
+    <style>
+        body { font-family: "Times New Roman", Times, serif; font-size: 12pt; line-height: 1.5; color: #000; padding: 40px; }
+        h1 { text-align: center; font-size: 16pt; text-transform: uppercase; margin-bottom: 40px; }
+        h2 { font-size: 13pt; margin-top: 20px; margin-bottom: 10px; }
+        p { text-align: justify; margin-bottom: 15px; }
+        .destaque { font-weight: bold; }
+        .assinaturas { margin-top: 80px; display: flex; justify-content: space-between; }
+        .linha-assinatura { border-top: 1px solid #000; width: 40%; text-align: center; padding-top: 5px; }
+        
+        @page {
+            margin: 2.5cm;
+            @bottom-right { content: "Página " counter(page); }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Contrato de Licença de Uso de Software (SaaS)</h1>
+
+    <p>
+        Pelo presente instrumento particular, de um lado <strong>{{ contratada }}</strong>, inscrita no CNPJ sob nº {{ cnpj_contratada }}, doravante denominada <strong>CONTRATADA</strong>;
+    </p>
+
+    <p>
+        E de outro lado <strong>{{ empresa.razao_social|default:empresa.nome_fantasia }}</strong>, inscrita no CNPJ sob nº {{ empresa.cnpj }}, doravante denominada <strong>CONTRATANTE</strong>.
+    </p>
+
+    <h2>1. DO OBJETO</h2>
+    <p>
+        O presente contrato tem por objeto a concessão de licença de uso do software de gestão comercial, na modalidade SaaS (Software as a Service), disponibilizado pela CONTRATADA.
+    </p>
+
+    <h2>2. DO PREÇO E PAGAMENTO</h2>
+    <p>
+        Pelo licenciamento do software, a CONTRATANTE pagará à CONTRATADA o valor mensal de <span class="destaque">R$ {{ empresa.valor_mensalidade }}</span>.
+    </p>
+    <p>
+        O não pagamento da mensalidade até a data de vencimento poderá acarretar na suspensão temporária do acesso ao sistema, conforme regras de bloqueio automático.
+    </p>
+
+    <h2>3. DA VIGÊNCIA</h2>
+    <p>
+        O presente contrato entra em vigor na data de sua assinatura e vigorará por prazo indeterminado, podendo ser rescindido por qualquer das partes mediante aviso prévio de 30 (trinta) dias.
+    </p>
+
+    <p style="margin-top: 50px; text-align: center;">
+        Cidade/UF, {{ data_atual|date:"d" }} de {{ data_atual|date:"F" }} de {{ data_atual|date:"Y" }}.
+    </p>
+
+    <table style="width: 100%; margin-top: 100px;">
+        <tr>
+            <td style="width: 45%; border-top: 1px solid #000; text-align: center;">
+                <strong>{{ contratada }}</strong><br>
+                CONTRATADA
+            </td>
+            <td style="width: 10%;"></td>
+            <td style="width: 45%; border-top: 1px solid #000; text-align: center;">
+                <strong>{{ empresa.nome_fantasia }}</strong><br>
+                CONTRATANTE
+            </td>
+        </tr>
+    </table>
+
+</body>
+</html>

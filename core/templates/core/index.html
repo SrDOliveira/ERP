@@ -1,0 +1,97 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h3 class="mb-4">Visão Geral</h3>
+
+    <div class="row">
+        <div class="col-md-3">
+            <div class="card-counter border-start border-4 border-primary">
+                <i class="bi bi-cart-check-fill"></i>
+                <span class="count-numbers fs-2 fw-bold">{{ vendas_hoje }}</span>
+                <span class="count-name d-block text-muted">Vendas Hoje</span>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card-counter border-start border-4 border-success">
+                <i class="bi bi-currency-dollar"></i>
+                <span class="count-numbers fs-2 fw-bold">R$ {{ total_hoje }}</span>
+                <span class="count-name d-block text-muted">Faturado Hoje</span>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card-counter border-start border-4 border-info">
+                <i class="bi bi-people-fill"></i>
+                <span class="count-numbers fs-2 fw-bold">{{ total_clientes }}</span>
+                <span class="count-name d-block text-muted">Clientes</span>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card-counter border-start border-4 border-danger">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                <span class="count-numbers fs-2 fw-bold">{{ estoque_baixo_count|default:"0" }}</span>
+                <span class="count-name d-block text-muted">Estoque Baixo</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-5">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Últimas Vendas</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Cliente</th>
+                                <th>Status</th>
+                                <th>Valor</th>
+                                <th class="text-end">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for venda in ultimas_vendas %}
+                            <tr>
+                                <td>{{ venda.id }}</td>
+                                <td>{{ venda.cliente.nome|default:"Balcão" }}</td>
+                                <td>
+                                    {% if venda.status == 'FECHADA' %}
+                                        <span class="badge bg-success">Concluída</span>
+                                    {% elif venda.status == 'CANCELADA' %}
+                                        <span class="badge bg-danger">Cancelada</span>
+                                    {% else %}
+                                        <span class="badge bg-warning text-dark">Orçamento</span>
+                                    {% endif %}
+                                </td>
+                                <td class="fw-bold">R$ {{ venda.valor_total }}</td>
+                                <td class="text-end">
+                                    <a href="{% url 'imprimir_cupom' venda.id %}" target="_blank" class="btn btn-sm btn-outline-dark" title="Cupom Térmico">
+                                        <i class="bi bi-printer-fill"></i>
+                                    </a>
+                                    
+                                    <a href="{% url 'gerar_orcamento_pdf' venda.id %}" target="_blank" class="btn btn-sm btn-outline-danger ms-1" title="PDF A4">
+                                        <i class="bi bi-file-pdf"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center py-4 text-muted">Nenhuma venda encontrada.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
