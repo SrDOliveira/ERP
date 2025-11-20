@@ -2,13 +2,13 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-    --primary-color: #0066FF; /* Azul SaaS (Tipo Bling/ContaAzul) */
+    --primary-color: #0066FF; 
     --secondary-color: #6c757d;
-    --success-color: #10B981; /* Verde Moderno */
-    --danger-color: #EF4444;  /* Vermelho Suave */
-    --warning-color: #F59E0B; /* Laranja Suave */
-    --bg-body: #F3F4F6;       /* Cinza muito claro de fundo */
-    --text-main: #1F2937;     /* Preto não tão preto */
+    --success-color: #10B981; 
+    --danger-color: #EF4444;  
+    --warning-color: #F59E0B; 
+    --bg-body: #F3F4F6;       
+    --text-main: #1F2937;     
     --text-muted: #6B7280;
     --sidebar-width: 260px;
 }
@@ -17,15 +17,28 @@ body {
     font-family: 'Inter', sans-serif;
     background-color: var(--bg-body);
     color: var(--text-main);
-    font-size: 0.92rem; /* Letra levemente menor e mais elegante */
+    font-size: 0.92rem;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden; /* Evita rolagem lateral indesejada */
+}
+
+/* --- CORREÇÃO DO LAYOUT (O Pulo do Gato) --- */
+.d-flex-wrapper {
+    display: flex;       /* Coloca Menu e Conteúdo lado a lado */
+    width: 100%;
+    min-height: 100vh;
+    align-items: stretch; /* Garante que ocupem a altura toda */
 }
 
 /* --- 2. SIDEBAR (MENU LATERAL) --- */
 .sidebar {
-    background-color: #FFFFFF !important; /* Fundo Branco (Tendência atual) */
+    background-color: #FFFFFF !important;
     border-right: 1px solid #E5E7EB;
-    box-shadow: none; /* Remove sombra pesada */
     width: var(--sidebar-width);
+    min-width: var(--sidebar-width); /* Garante que não encolha */
+    display: flex;
+    flex-direction: column;
 }
 
 .sidebar h4 {
@@ -40,10 +53,12 @@ body {
     border-radius: 8px;
     margin-bottom: 4px;
     padding: 10px 15px;
+    text-decoration: none; /* Remove sublinhado */
+    display: block;
 }
 
 .sidebar a:hover, .sidebar a.active {
-    background-color: #EFF6FF !important; /* Azulzinho bem claro no hover */
+    background-color: #EFF6FF !important;
     color: var(--primary-color) !important;
 }
 
@@ -53,7 +68,6 @@ body {
     margin-right: 8px;
 }
 
-/* Títulos pequenos no menu (Cadastros, Gestão...) */
 .sidebar p.text-uppercase {
     font-size: 0.75rem;
     font-weight: 700;
@@ -63,11 +77,24 @@ body {
     padding-left: 15px;
 }
 
-/* --- 3. CARDS E CONTEÚDO --- */
+/* --- 3. ÁREA PRINCIPAL --- */
+.main-wrapper {
+    flex-grow: 1; /* Ocupa todo o espaço restante */
+    width: calc(100% - var(--sidebar-width)); /* Evita estourar a tela */
+    display: flex;
+    flex-direction: column;
+}
+
+.content {
+    padding: 30px;
+    flex-grow: 1;
+}
+
+/* --- 4. CARDS E COMPONENTES --- */
 .card {
     border: none;
-    border-radius: 12px; /* Cantos mais arredondados */
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); /* Sombra Apple/Stripe */
+    border-radius: 12px;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
     background-color: #FFFFFF;
     margin-bottom: 24px;
 }
@@ -80,19 +107,29 @@ body {
     border-radius: 12px 12px 0 0 !important;
 }
 
-/* Cards de KPI (Dashboard) */
 .card-counter {
     border-radius: 12px;
     border: 1px solid #E5E7EB;
     box-shadow: 0 1px 2px rgba(0,0,0,0.05);
     transition: transform 0.2s;
+    background: #fff;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
 }
 .card-counter:hover {
     transform: translateY(-3px);
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
 }
+.card-counter i {
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    font-size: 4rem;
+    opacity: 0.1;
+}
 
-/* --- 4. BOTÕES E FORMULÁRIOS --- */
+/* --- 5. BOTÕES E FORMULÁRIOS --- */
 .btn {
     border-radius: 8px;
     font-weight: 500;
@@ -104,10 +141,7 @@ body {
 .btn-primary {
     background-color: var(--primary-color);
     border-color: var(--primary-color);
-}
-
-.btn-primary:hover {
-    background-color: #0052CC;
+    color: white;
 }
 
 .form-control, .form-select {
@@ -120,9 +154,13 @@ body {
 .form-control:focus, .form-select:focus {
     border-color: var(--primary-color);
     box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.15);
+    outline: none;
 }
 
-/* --- 5. TABELAS --- */
+/* --- 6. TABELAS --- */
+.table {
+    margin-bottom: 0;
+}
 .table thead th {
     background-color: #F9FAFB;
     color: var(--text-muted);
@@ -132,17 +170,44 @@ body {
     border-bottom: 1px solid #E5E7EB;
     padding: 12px 16px;
 }
-
 .table tbody td {
     padding: 14px 16px;
     vertical-align: middle;
     border-bottom: 1px solid #F3F4F6;
     color: #374151;
 }
-
 .badge {
     padding: 6px 10px;
     border-radius: 6px;
     font-weight: 600;
     letter-spacing: 0.5px;
+}
+
+/* --- 7. MOBILE --- */
+@media (max-width: 768px) {
+    .d-flex-wrapper {
+        display: block; /* No celular, volta a ser em bloco */
+    }
+    .sidebar {
+        position: fixed;
+        left: -260px; /* Esconde menu */
+        height: 100%;
+        z-index: 2000;
+        transition: left 0.3s;
+    }
+    .sidebar.active {
+        left: 0; /* Mostra menu */
+    }
+    .main-wrapper {
+        width: 100%;
+        margin-left: 0;
+    }
+    .overlay {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 1999;
+    }
+    .overlay.active { display: block; }
 }
