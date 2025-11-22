@@ -1,6 +1,9 @@
 # core/views.py
 
 # --- 1. IMPORTS DO DJANGO ---
+from django.db.models import Sum, Count, F, Avg, Q
+from django.utils import timezone
+from datetime import timedelta
 from django.contrib import messages
 from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import render, redirect, get_object_or_404
@@ -50,36 +53,120 @@ from .forms import (
 # =========================================================
 @login_required
 def dashboard(request):
-    empresa_usuario = request.user.empresa
+    empresa = request.user.empresa
     hoje = timezone.now().date()
+    ontem = hoje - timedelta(days=1)
+    inicio_mes = hoje.replace(day=1)
+    sete_dias_atras = hoje - timedelta(days=7)
+    sessenta_dias_atras = hoje - timedelta(days=60)
+
+    # --- NÍVEL 1: VISÃO IMEDIATA (HOJE) ---
+    vendas_hoje = Venda.objects.filter(empresa=empresa, data_venda__date=hoje, status='FECHADA')
+    vendas_ontem = Venda.objects.filter(empresa=empresa, data_venda__date=ontem, status='FECHADA')
     
-    # Totais Gerais
-    total_clientes = Cliente.objects.filter(empresa=empresa_usuario).count()
-    total_produtos = Produto.objects.filter(empresa=empresa_usuario).count()
+    total_hoje = vendas_hoje.aggregate(Sum('valor_total'))['valor_total__sum'] or 0
+    total_ontem = vendas_ontem.aggregate(Sum('valor_total'))['valor_total__sum'] or 0
     
-    # --- NOVO CÁLCULO: ESTOQUE BAIXO ---
-    # Filtra produtos onde o estoque_atual é Menor ou Igual (lte) ao estoque_minimo
-    estoque_baixo_count = Produto.objects.filter(
-        empresa=empresa_usuario, 
-        estoque_atual__lte=F('estoque_minimo')
+    # Comparativo (Crescimento)
+    crescimento_dia = 0
+    if total_ontem > 0:
+        crescimento_dia = ((total_hoje - total_ontem) / total_ontem) * 100
+
+    ticket_medio = vendas_hoje.aggregate(Avg('valor_total'))['valor_total__avg'] or 0
+    qtd_itens_hoje = ItemVenda.objects.filter(venda__in=vendas_hoje).aggregate(Sum('quantidade'))['quantidade__sum'] or 0
+    
+    # Caixas Abertos
+    caixas_abertos = MovimentoCaixa.objects.filter(empresa=empresa, status='ABERTO').count()
+    
+    # Estoque Crítico
+    estoque_critico = Produto.objects.filter(empresa=empresa, estoque_atual__lte=F('estoque_minimo')).count()
+
+    # --- NÍVEL 2: SITUAÇÃO FINANCEIRA ---
+    # Contas a Pagar Hoje (Que não foram pagas)
+    contas_pagar_hoje = Lancamento.objects.filter(
+        empresa=empresa, tipo='DESPESA', data_vencimento=hoje, pago=False
+    ).aggregate(Sum('valor'))['valor__sum'] or 0
+    
+    # Contas a Receber Hoje (Vendas a prazo, se houver, ou boletos)
+    contas_receber_hoje = Lancamento.objects.filter(
+        empresa=empresa, tipo='RECEITA', data_vencimento=hoje, pago=False
+    ).aggregate(Sum('valor'))['valor__sum'] or 0
+    
+    saldo_do_dia = total_hoje - contas_pagar_hoje # Simplificado (Caixa gerado - Contas a pagar)
+
+    # --- NÍVEL 3: CHECKLIST DE AÇÕES URGENTES ---
+    alertas = []
+    if estoque_critico > 0:
+        alertas.append({'msg': f'{estoque_critico} produtos com estoque baixo/zerado', 'tipo': 'danger', 'link': 'lista_produtos'})
+    if caixas_abertos == 0 and total_hoje == 0: # Se não vendeu nada e não tem caixa aberto
+        alertas.append({'msg': 'Nenhum caixa aberto no momento', 'tipo': 'warning', 'link': 'abrir_caixa'})
+    if contas_pagar_hoje > 0:
+        alertas.append({'msg': f'R$ {contas_pagar_hoje} em contas vencendo hoje', 'tipo': 'danger', 'link': 'financeiro'})
+    
+    # Clientes VIP Inativos (Compraram muito no passado, mas nada nos últimos 60 dias)
+    # Lógica simplificada: Clientes que não compram há 60 dias
+    clientes_inativos = Cliente.objects.filter(
+        empresa=empresa, 
+        data_ultima_compra__lt=sessenta_dias_atras
     ).count()
-    # -----------------------------------
+    if clientes_inativos > 0:
+        alertas.append({'msg': f'{clientes_inativos} clientes inativos há +60 dias', 'tipo': 'info', 'link': 'lista_clientes'})
+
+    # --- NÍVEL 4: RANKINGS ---
+    # Mais Vendidos (7 dias)
+    top_produtos = ItemVenda.objects.filter(
+        venda__empresa=empresa, venda__status='FECHADA', venda__data_venda__date__gte=sete_dias_atras
+    ).values('produto__nome').annotate(qtd=Sum('quantidade')).order_by('-qtd')[:5]
     
-    # Vendas de Hoje
-    vendas_hoje_qs = Venda.objects.filter(empresa=empresa_usuario, data_venda__date=hoje)
-    qtd_vendas_hoje = vendas_hoje_qs.count()
-    valor_vendas_hoje = vendas_hoje_qs.aggregate(Sum('valor_total'))['valor_total__sum'] or 0
-    
-    # Últimas Vendas
-    ultimas_vendas = Venda.objects.filter(empresa=empresa_usuario).order_by('-data_venda')[:5]
+    # Produtos "Encalhados" (Sem vendas nos últimos 60 dias, mas com estoque > 0)
+    # Essa query é pesada, vamos simplificar: Produtos com estoque mas sem venda recente
+    produtos_com_estoque = Produto.objects.filter(empresa=empresa, estoque_atual__gt=0)
+    produtos_encalhados = []
+    for p in produtos_com_estoque:
+        vendeu_recente = ItemVenda.objects.filter(
+            produto=p, venda__data_venda__date__gte=sessenta_dias_atras
+        ).exists()
+        if not vendeu_recente:
+            produtos_encalhados.append(p)
+            if len(produtos_encalhados) >= 5: break # Pega só 5 pra não travar
+
+    # --- NÍVEL 5: GRÁFICOS (DADOS JSON) ---
+    # Vendas dos últimos 7 dias
+    datas_grafico = []
+    valores_grafico = []
+    for i in range(6, -1, -1):
+        d = hoje - timedelta(days=i)
+        val = Venda.objects.filter(empresa=empresa, status='FECHADA', data_venda__date=d).aggregate(Sum('valor_total'))['valor_total__sum'] or 0
+        datas_grafico.append(d.strftime('%d/%m'))
+        valores_grafico.append(float(val))
 
     return render(request, 'core/index.html', {
-        'total_clientes': total_clientes,
-        'total_produtos': total_produtos,
-        'estoque_baixo_count': estoque_baixo_count, # <--- Enviando para o card vermelho
-        'vendas_hoje': qtd_vendas_hoje,
-        'total_hoje': valor_vendas_hoje,
-        'ultimas_vendas': ultimas_vendas,
+        # Nível 1
+        'total_hoje': total_hoje,
+        'crescimento_dia': crescimento_dia,
+        'ticket_medio': ticket_medio,
+        'qtd_itens_hoje': qtd_itens_hoje,
+        'caixas_abertos': caixas_abertos,
+        'estoque_critico': estoque_critico,
+        
+        # Nível 2
+        'contas_pagar_hoje': contas_pagar_hoje,
+        'contas_receber_hoje': contas_receber_hoje,
+        'saldo_do_dia': saldo_do_dia,
+        
+        # Nível 3
+        'alertas': alertas,
+        
+        # Nível 4
+        'top_produtos': top_produtos,
+        'produtos_encalhados': produtos_encalhados,
+        
+        # Nível 5 (Gráficos)
+        'datas_grafico': datas_grafico,
+        'valores_grafico': valores_grafico,
+        
+        # Extras
+        'total_clientes': Cliente.objects.filter(empresa=empresa).count()
     })
 
 # =========================================================
