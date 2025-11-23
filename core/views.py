@@ -3,13 +3,14 @@
 # --- 1. IMPORTS GERAIS E DJANGO ---
 import requests
 import json
-import os # <--- Adicione este import
 from django.views.decorators.csrf import csrf_exempt # Para o Webhook
 from django.http import JsonResponse
 
-# Em vez de escrever a chave aqui, mandamos o Python buscar no servidor
-ASAAS_API_KEY = os.environ.get('ASAAS_API_KEY', '') 
-ASAAS_URL = "https://sandbox.asaas.com/api/v3" # Quando for pra valer, mude para www.asaas.com
+import os
+
+# Pega do servidor. Se não tiver nada lá, usa o padrão de produção (www)
+ASAAS_API_KEY = os.environ.get('$aact_prod_000MzkwODA2MWY2OGM3MWRlMDU2NWM3MzJlNzZmNGZhZGY6OjlhNDFkZGE3LTAzZTUtNDhkZi1iZDMyLTdiZGJjOTI1NGVlMTo6JGFhY2hfMTYwOTUwMjUtMmIyMC00ZWMwLWE1NDEtZTdhNjhiYTNhODMw', '')
+ASAAS_URL = os.environ.get('ASAAS_URL', 'https://www.asaas.com/api/v3')
 
 from datetime import timedelta
 from django.contrib import messages
