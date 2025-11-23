@@ -1,6 +1,16 @@
 # core/views.py
 
 # --- 1. IMPORTS GERAIS E DJANGO ---
+import requests
+import json
+import os # <--- Adicione este import
+from django.views.decorators.csrf import csrf_exempt # Para o Webhook
+from django.http import JsonResponse
+
+# Em vez de escrever a chave aqui, mandamos o Python buscar no servidor
+ASAAS_API_KEY = os.environ.get('ASAAS_API_KEY', '') 
+ASAAS_URL = "https://sandbox.asaas.com/api/v3" # Quando for pra valer, mude para www.asaas.com
+
 from datetime import timedelta
 from django.contrib import messages
 from django.contrib.auth import login # <--- Necessário para o Auto-Login
@@ -368,14 +378,20 @@ def lista_produtos(request):
 @login_required
 def adicionar_produto(request):
     if request.method == 'POST':
-        form = ProdutoForm(request.POST, request.FILES)
+        # request.FILES é obrigatório para fotos!
+        form = ProdutoForm(request.POST, request.FILES) 
         if form.is_valid():
             produto = form.save(commit=False)
             produto.empresa = request.user.empresa
             produto.save()
+            messages.success(request, "✅ Produto cadastrado com sucesso!")
             return redirect('lista_produtos')
+        else:
+            # Isso vai mostrar no topo da tela qual campo está com erro
+            messages.error(request, f"Erro ao cadastrar: {form.errors}")
     else:
         form = ProdutoForm()
+    
     return render(request, 'core/form_produto.html', {'form': form, 'titulo': 'Novo Produto'})
 
 @login_required
@@ -400,11 +416,14 @@ def excluir_produto(request, produto_id):
 #  FINANCEIRO
 # =========================================================
 @login_required
+@login_required
 def financeiro(request):
-    # Bloqueio de Vendedor
-    if request.user.cargo == 'VENDEDOR':
-        return HttpResponseForbidden("Acesso Negado: Área restrita à gerência.")
-
+    if request.user.cargo == 'VENDEDOR': return HttpResponseForbidden()
+    
+    # BLOQUEIO DE PLANO
+    if not request.user.empresa.tem_acesso_financeiro():
+        return render(request, 'core/erro_plano.html') # Crie uma paginazinha de "Faça Upgrade"
+    
     lancamentos = Lancamento.objects.filter(empresa=request.user.empresa).order_by('-data_vencimento')
     total_receitas = sum(l.valor for l in lancamentos if l.tipo == 'RECEITA' and l.pago)
     total_despesas = sum(l.valor for l in lancamentos if l.tipo == 'DESPESA' and l.pago)
@@ -800,7 +819,19 @@ def lista_equipe(request):
 
 @login_required
 def adicionar_colaborador(request):
+    # Segurança: Vendedor não pode adicionar ninguém
     if request.user.cargo == 'VENDEDOR': return HttpResponseForbidden()
+
+    # --- VERIFICAÇÃO DE PLANO (NOVO) ---
+    empresa = request.user.empresa
+    qtd_atual = Usuario.objects.filter(empresa=empresa).count()
+    limite = empresa.limite_usuarios()
+
+    # Se já atingiu o limite, bloqueia e avisa
+    if qtd_atual >= limite:
+        messages.error(request, f"Seu plano {empresa.get_plano_display()} permite apenas {limite} usuários. Faça o upgrade para adicionar mais!")
+        return redirect('lista_equipe')
+    # -----------------------------------
 
     if request.method == 'POST':
         form = UsuarioForm(request.POST)
@@ -816,6 +847,7 @@ def adicionar_colaborador(request):
                 novo_user.set_password('123456') # Senha padrão se não informar
                 
             novo_user.save()
+            messages.success(request, "Colaborador adicionado com sucesso!")
             return redirect('lista_equipe')
     else:
         form = UsuarioForm()
@@ -868,10 +900,18 @@ def cadastro_loja(request):
         if form.is_valid():
             data = form.cleaned_data
             
-            # 1. Criar a Empresa
+            # 1. Criar a Empresa com 7 DIAS DE TESTE
+            import datetime # Garanta que importou datetime no topo ou use timezone
+            from django.utils import timezone # Melhor usar timezone do Django
+            
+            hoje = timezone.now().date()
+            vencimento_teste = hoje + timezone.timedelta(days=7)
+
             nova_empresa = Empresa.objects.create(
                 nome_fantasia=data['nome_loja'],
-                ativa=True
+                ativa=True,
+                data_vencimento=vencimento_teste, # <--- A MÁGICA É AQUI
+                plano='ESSENCIAL' # Começa no básico ou PRO, você decide
             )
             
             # 2. Criar o Usuário Dono (Gerente)
@@ -899,3 +939,103 @@ def cadastro_loja(request):
         form = CadastroLojaForm()
         
     return render(request, 'core/signup.html', {'form': form})
+
+@login_required
+def iniciar_pagamento(request, plano):
+    empresa = request.user.empresa
+    
+    # 1. Definir valor conforme o plano
+    if plano == 'ESSENCIAL':
+        valor = 129.00
+    elif plano == 'PRO':
+        valor = 249.00
+    else:
+        return redirect('dashboard')
+
+    headers = {
+        "Content-Type": "application/json",
+        "access_token": ASAAS_API_KEY
+    }
+
+    # 2. Criar/Recuperar Cliente no Asaas
+    if not empresa.asaas_customer_id:
+        payload_cliente = {
+            "name": empresa.nome_fantasia,
+            "cpfCnpj": empresa.cnpj,
+            "email": request.user.email,
+        }
+        try:
+            response = requests.post(f"{ASAAS_URL}/customers", json=payload_cliente, headers=headers)
+            if response.status_code == 200:
+                empresa.asaas_customer_id = response.json()['id']
+                empresa.save()
+            else:
+                messages.error(request, f"Erro Asaas: {response.text}")
+                return redirect('dashboard')
+        except Exception as e:
+            messages.error(request, "Erro de conexão com pagamento.")
+            return redirect('dashboard')
+
+    # 3. Criar a Assinatura (Subscription)
+    payload_assinatura = {
+        "customer": empresa.asaas_customer_id,
+        "billingType": "UNDEFINED", # Deixa o cliente escolher
+        "value": valor,
+        "nextDueDate": timezone.now().strftime('%Y-%m-%d'),
+        "cycle": "MONTHLY",
+        "description": f"Assinatura Nexum ERP - Plano {plano}"
+    }
+
+    try:
+        response = requests.post(f"{ASAAS_URL}/subscriptions", json=payload_assinatura, headers=headers)
+        
+        if response.status_code == 200:
+            data = response.json()
+            # Redireciona para o link de pagamento
+            return redirect(data['billUrl'])
+        else:
+            messages.error(request, "Erro ao gerar cobrança.")
+            return redirect('dashboard')
+    except Exception:
+        messages.error(request, "Erro de conexão.")
+        return redirect('dashboard')
+
+# --- AQUI COMEÇA A NOVA FUNÇÃO (Sem indentação, colado na margem) ---
+@csrf_exempt 
+def webhook_asaas(request):
+    if request.method == 'POST':
+        try:
+            dados = json.loads(request.body)
+            evento = dados.get('event')
+            payment = dados.get('payment')
+            
+            # Verifica se o evento é de Pagamento Confirmado
+            if evento in ['PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED']:
+                customer_id = payment.get('customer')
+                
+                # Procura a empresa dona desse ID
+                try:
+                    empresa = Empresa.objects.get(asaas_customer_id=customer_id)
+                    
+                    # Lógica de Liberação: Ativa e dá +30 dias
+                    empresa.ativa = True
+                    empresa.data_vencimento = timezone.now().date() + timedelta(days=30)
+                    
+                    # Verifica se foi um upgrade de valor
+                    valor_pago = float(payment.get('value', 0))
+                    if valor_pago >= 249:
+                        empresa.plano = 'PRO'
+                    else:
+                        empresa.plano = 'ESSENCIAL'
+                        
+                    empresa.save()
+                    
+                    return JsonResponse({'status': 'recebido e liberado'})
+                except Empresa.DoesNotExist:
+                    return JsonResponse({'status': 'empresa nao encontrada'}, status=404)
+            
+            return JsonResponse({'status': 'ignorado'})
+        except Exception as e:
+            return JsonResponse({'status': 'erro', 'msg': str(e)}, status=500)
+            
+    return HttpResponseForbidden()

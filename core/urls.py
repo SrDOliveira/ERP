@@ -50,5 +50,7 @@ urlpatterns = [
     path('equipe/editar/<int:user_id>/', views.editar_colaborador, name='editar_colaborador'),
     path('equipe/excluir/<int:user_id>/', views.excluir_colaborador, name='excluir_colaborador'),
     path('cadastro/', views.cadastro_loja, name='cadastro_loja'),
+    path('pagamento/iniciar/<str:plano>/', views.iniciar_pagamento, name='iniciar_pagamento'),
+    path('webhook/asaas/', views.webhook_asaas, name='webhook_asaas'),
 
 ]

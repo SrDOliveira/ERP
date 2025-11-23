@@ -9,16 +9,56 @@ from django.utils import timezone
 #  1. EMPRESAS E USUÁRIOS
 # =========================================================
 class Empresa(models.Model):
-    # Campos Básicos
+    # --- 1. PLANOS E ASSINATURA ---
+    PLANOS_CHOICES = (
+        ('ESSENCIAL', 'Essencial (R$ 129)'),
+        ('PRO', 'Profissional (R$ 249)'),
+        ('EXPANSAO', 'Expansão (Corporativo)'),
+    )
+    plano = models.CharField(max_length=20, choices=PLANOS_CHOICES, default='ESSENCIAL')
+    valor_mensalidade = models.DecimalField(max_digits=10, decimal_places=2, default=99.90)
+    data_vencimento = models.DateField(null=True, blank=True)
+    ativa = models.BooleanField(default=True)
+    # Integração Asaas
+    asaas_customer_id = models.CharField(max_length=100, blank=True, null=True)
+
+    @property
+    def dias_restantes(self):
+        if not self.data_vencimento:
+            return 0
+        hoje = timezone.now().date()
+        delta = self.data_vencimento - hoje
+        return delta.days
+
+    # --- 2. DADOS BÁSICOS ---
     nome_fantasia = models.CharField(max_length=255)
     razao_social = models.CharField(max_length=255, blank=True, null=True)
     cnpj = models.CharField(max_length=18, unique=True)
-    ativa = models.BooleanField(default=True)
-    valor_mensalidade = models.DecimalField(max_digits=10, decimal_places=2, default=99.90)
     data_criacao = models.DateTimeField(auto_now_add=True)
-    data_vencimento = models.DateField(null=True, blank=True)
     
-    # Campos de Personalização (Logo e Fiscal)
+    # --- 3. PERSONALIZAÇÃO (LOGO E CORES) ---
+    logo = models.ImageField(upload_to='logos_empresas/', null=True, blank=True)
+    mensagem_cupom = models.CharField(max_length=200, default="Obrigado pela preferência!", blank=True)
+    cor_sistema = models.CharField(max_length=20, default="#0d6efd", help_text="Cor principal do sistema (Hex)")
+    
+    # --- 4. DADOS FISCAIS ---
+    ambiente_fiscal = models.CharField(max_length=20, default='HOMOLOGACAO', choices=(('HOMOLOGACAO', 'Teste'), ('PRODUCAO', 'Valendo')))
+    token_api_fiscal = models.CharField(max_length=200, blank=True, null=True)
+    csc_token = models.CharField(max_length=100, blank=True, null=True)
+
+    def __str__(self):
+        return self.nome_fantasia
+
+    # --- LÓGICA DE LIMITES ---
+    def limite_usuarios(self):
+        if self.plano == 'ESSENCIAL': return 4
+        if self.plano == 'PRO': return 10
+        return 999 # Expansão ilimitado
+
+    def tem_acesso_financeiro(self):
+        # Essencial Não tem financeiro completo, só Pro e Expansão
+        return self.plano in ['PRO', 'EXPANSAO']    # Campos de Personalização (Logo e Fiscal)
+    
     logo = models.ImageField(upload_to='logos_empresas/', null=True, blank=True)
     mensagem_cupom = models.CharField(max_length=200, default="Obrigado pela preferência!", blank=True)
     cor_sistema = models.CharField(max_length=20, default="#0d6efd", help_text="Cor principal do sistema (Hex)")
