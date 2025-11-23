@@ -1,12 +1,9 @@
-from django.contrib.auth import login # Importante para logar direto
-from .forms import(CadastroLojaForm) # Importe o novo form
 from django import forms
 from django.core.exceptions import ValidationError
-# AQUI ESTAVA O ERRO: Precisamos importar todos os modelos novos
-from .models import Produto, MovimentoCaixa, Usuario, Caixa
-from .models import Categoria, Fornecedor, Cliente
-from .models import Empresa # Importe Empresa se não tiver
 from django.contrib.auth.models import User
+from .models import Produto, MovimentoCaixa, Usuario, Caixa, Empresa, Categoria, Fornecedor, Cliente
+
+# ... (aqui começam as classes ProdutoForm, etc)
 
 # --- Formulário de Produto ---
 class ProdutoForm(forms.ModelForm):

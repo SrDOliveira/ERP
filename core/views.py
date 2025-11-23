@@ -1,23 +1,22 @@
 # core/views.py
 
-# --- 1. IMPORTS DO DJANGO ---
-from django.db.models import Sum, Count, F, Avg, Q
-from django.utils import timezone
+# --- 1. IMPORTS GERAIS E DJANGO ---
 from datetime import timedelta
 from django.contrib import messages
+from django.contrib.auth import login # <--- Necessário para o Auto-Login
+from django.contrib.auth.decorators import login_required
+from django.contrib.admin.views.decorators import staff_member_required
+from django.db.models import Sum, Count, F, Avg, Q, ExpressionWrapper, FloatField
 from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import render, redirect, get_object_or_404
 from django.template.loader import render_to_string
-from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_POST
-from django.db.models import Sum, F, Count, ExpressionWrapper, FloatField
 from django.utils import timezone
-from django.contrib.admin.views.decorators import staff_member_required
+from django.views.decorators.http import require_POST
 
 # --- 2. IMPORTS DE TERCEIROS ---
 from weasyprint import HTML
 
-# --- 3. IMPORTS DOS SEUS MODELOS (Banco de Dados) ---
+# --- 3. IMPORTS DOS SEUS MODELOS ---
 from .models import (
     Venda, ItemVenda, Produto, Cliente, Lancamento, Empresa, 
     MovimentoCaixa, Caixa, FormaPagamento, Usuario,
@@ -28,8 +27,13 @@ from .models import (
 from .forms import (
     ProdutoForm, AberturaCaixaForm, FechamentoCaixaForm,
     CategoriaForm, FornecedorForm, ClienteForm, 
-    ConfiguracaoEmpresaForm, UsuarioForm
+    ConfiguracaoEmpresaForm, UsuarioForm,
+    CadastroLojaForm  # <--- O NOVO FORMULÁRIO FICA AQUI
 )
+
+# =========================================================
+#  Abaixo começam as funções...
+# =========================================================
 
 # =========================================================
 #  Abaixo começam as funções (dashboard, pdv, etc...)
