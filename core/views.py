@@ -858,3 +858,44 @@ def excluir_colaborador(request, user_id):
         
     colaborador.delete()
     return redirect('lista_equipe')
+
+# =========================================================
+#  AUTO-CADASTRO (SIGN UP)
+# =========================================================
+def cadastro_loja(request):
+    if request.method == 'POST':
+        form = CadastroLojaForm(request.POST)
+        if form.is_valid():
+            data = form.cleaned_data
+            
+            # 1. Criar a Empresa
+            nova_empresa = Empresa.objects.create(
+                nome_fantasia=data['nome_loja'],
+                ativa=True
+            )
+            
+            # 2. Criar o Usuário Dono (Gerente)
+            novo_usuario = Usuario.objects.create_user(
+                username=data['username'],
+                email=data['email'],
+                password=data['senha'],
+                first_name=data['nome_usuario'],
+                empresa=nova_empresa,
+                cargo='GERENTE'
+            )
+            
+            # 3. ONBOARDING: Criar dados iniciais
+            Caixa.objects.create(empresa=nova_empresa, nome="Caixa Principal", observacao="Caixa padrão")
+            FormaPagamento.objects.create(empresa=nova_empresa, nome="Dinheiro", taxa=0)
+            FormaPagamento.objects.create(empresa=nova_empresa, nome="Cartão Crédito", taxa=3.5, dias_para_receber=30)
+            FormaPagamento.objects.create(empresa=nova_empresa, nome="PIX", taxa=0)
+            
+            # 4. Logar e Redirecionar
+            login(request, novo_usuario)
+            messages.success(request, f"Bem-vindo ao Nexum! Sua loja '{data['nome_loja']}' está pronta.")
+            return redirect('dashboard')
+            
+    else:
+        form = CadastroLojaForm()
+        
+    return render(request, 'core/signup.html', {'form': form})
