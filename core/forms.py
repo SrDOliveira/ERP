@@ -1,3 +1,5 @@
+from django.contrib.auth import login # Importante para logar direto
+from .forms import(CadastroLojaForm) # Importe o novo form
 from django import forms
 from django.core.exceptions import ValidationError
 # AQUI ESTAVA O ERRO: Precisamos importar todos os modelos novos
@@ -144,3 +146,63 @@ class UsuarioForm(forms.ModelForm):
             'email': forms.EmailInput(attrs={'class': 'form-control'}),
             'cargo': forms.Select(attrs={'class': 'form-select'}),
         }
+
+# Adicione no final do arquivo core/forms.py
+
+class CadastroLojaForm(forms.Form):
+    # Dados da Loja
+    nome_loja = forms.CharField(label="Nome da Loja", widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Boutique da Ana'}))
+    
+    # Dados do Dono
+    nome_usuario = forms.CharField(label="Seu Nome", widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Seu nome completo'}))
+    email = forms.EmailField(label="E-mail", widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'seu@email.com'}))
+    username = forms.CharField(label="Usuário para Login", widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: ana_boutique'}))
+    senha = forms.CharField(label="Senha", widget=forms.PasswordInput(attrs={'class': 'form-control'}))
+    
+    def clean_username(self):
+        username = self.cleaned_data['username']
+        if Usuario.objects.filter(username=username).exists():
+            raise ValidationError("Este nome de usuário já existe. Escolha outro.")
+        return username
+    
+
+# =========================================================
+#  AUTO-CADASTRO (SIGN UP)
+# =========================================================
+def cadastro_loja(request):
+    if request.method == 'POST':
+        form = CadastroLojaForm(request.POST)
+        if form.is_valid():
+            data = form.cleaned_data
+            
+            # 1. Criar a Empresa
+            nova_empresa = Empresa.objects.create(
+                nome_fantasia=data['nome_loja'],
+                ativa=True
+            )
+            
+            # 2. Criar o Usuário Dono (Gerente)
+            novo_usuario = Usuario.objects.create_user(
+                username=data['username'],
+                email=data['email'],
+                password=data['senha'],
+                first_name=data['nome_usuario'],
+                empresa=nova_empresa,
+                cargo='GERENTE' # Já nasce mandando
+            )
+            
+            # 3. ONBOARDING: Criar dados iniciais para a loja não ficar vazia
+            Caixa.objects.create(empresa=nova_empresa, nome="Caixa Principal", observacao="Caixa padrão do sistema")
+            FormaPagamento.objects.create(empresa=nova_empresa, nome="Dinheiro", taxa=0)
+            FormaPagamento.objects.create(empresa=nova_empresa, nome="Cartão de Crédito", taxa=3.5, dias_para_receber=30)
+            FormaPagamento.objects.create(empresa=nova_empresa, nome="PIX", taxa=0)
+            
+            # 4. Logar e Redirecionar
+            login(request, novo_usuario)
+            messages.success(request, f"Bem-vindo ao Nexum! Sua loja '{data['nome_loja']}' está pronta.")
+            return redirect('dashboard')
+            
+    else:
+        form = CadastroLojaForm()
+        
+    return render(request, 'core/signup.html', {'form': form})

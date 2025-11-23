@@ -49,4 +49,6 @@ urlpatterns = [
     path('equipe/novo/', views.adicionar_colaborador, name='adicionar_colaborador'),
     path('equipe/editar/<int:user_id>/', views.editar_colaborador, name='editar_colaborador'),
     path('equipe/excluir/<int:user_id>/', views.excluir_colaborador, name='excluir_colaborador'),
+    path('cadastro/', views.cadastro_loja, name='cadastro_loja'),
+
 ]
