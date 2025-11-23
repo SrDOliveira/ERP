@@ -1040,3 +1040,7 @@ def webhook_asaas(request):
             return JsonResponse({'status': 'erro', 'msg': str(e)}, status=500)
             
     return HttpResponseForbidden()
+
+@login_required
+def escolher_plano(request):
+    return render(request, 'core/planos.html')

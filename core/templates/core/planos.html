@@ -1,0 +1,89 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Planos e Preços{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    
+    <div class="text-center mb-5">
+        <h2 class="fw-bold text-dark">Escolha o plano ideal para sua loja</h2>
+        <p class="text-muted lead">Escale seu negócio com a tecnologia do Nexum ERP.</p>
+    </div>
+
+    <div class="row row-cols-1 row-cols-md-3 mb-3 text-center align-items-end">
+        
+        <div class="col">
+            <div class="card mb-4 rounded-3 shadow-sm border-0 h-100">
+                <div class="card-header py-3 bg-white border-bottom-0">
+                    <h4 class="my-0 fw-normal text-muted">Essencial</h4>
+                </div>
+                <div class="card-body">
+                    <h1 class="card-title pricing-card-title">R$ 129<small class="text-muted fw-light">/mês</small></h1>
+                    <ul class="list-unstyled mt-3 mb-4 text-start ps-4">
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Até 4 Usuários</li>
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> PDV Frente de Caixa</li>
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Controle de Estoque</li>
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Cupom Não Fiscal</li>
+                        <li class="mb-2 text-muted text-decoration-line-through"><i class="bi bi-x-circle me-2"></i> Financeiro Completo</li>
+                        <li class="mb-2 text-muted text-decoration-line-through"><i class="bi bi-x-circle me-2"></i> Relatórios Avançados</li>
+                    </ul>
+                    <div class="d-grid">
+                        <a href="{% url 'iniciar_pagamento' 'ESSENCIAL' %}" class="btn btn-lg btn-outline-primary">Começar Agora</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col">
+            <div class="card mb-4 rounded-3 shadow border-primary border-2 h-100 transform-scale">
+                <div class="card-header py-3 bg-primary text-white border-primary">
+                    <h4 class="my-0 fw-bold">Profissional</h4>
+                    <span class="badge bg-warning text-dark position-absolute top-0 end-0 m-2">MAIS POPULAR</span>
+                </div>
+                <div class="card-body">
+                    <h1 class="card-title pricing-card-title">R$ 249<small class="text-muted fw-light">/mês</small></h1>
+                    <ul class="list-unstyled mt-3 mb-4 text-start ps-4">
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> <strong>Até 10 Usuários</strong></li>
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Tudo do Essencial</li>
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> <strong>Financeiro Completo</strong></li>
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> <strong>Relatórios Gerenciais</strong></li>
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Comissões por Vendedor</li>
+                        <li class="mb-2"><i class="bi bi-whatsapp text-success me-2"></i> Suporte via WhatsApp</li>
+                    </ul>
+                    <div class="d-grid">
+                        <a href="{% url 'iniciar_pagamento' 'PRO' %}" class="btn btn-lg btn-primary">Assinar Profissional</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col">
+            <div class="card mb-4 rounded-3 shadow-sm border-0 h-100">
+                <div class="card-header py-3 bg-white border-bottom-0">
+                    <h4 class="my-0 fw-normal text-dark">Expansão</h4>
+                </div>
+                <div class="card-body">
+                    <h1 class="card-title pricing-card-title">Consulte</h1>
+                    <ul class="list-unstyled mt-3 mb-4 text-start ps-4">
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> <strong>Usuários Ilimitados</strong></li>
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Multi-Lojas / Filiais</li>
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> API de Integração</li>
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Gerente de Conta Dedicado</li>
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Importação de Dados</li>
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Treinamento VIP</li>
+                    </ul>
+                    <div class="d-grid">
+                        <a href="https://wa.me/55SEUNUMERO?text=Tenho interesse no plano Expansão do Nexum." target="_blank" class="btn btn-lg btn-outline-dark">
+                            Falar com Consultor
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="text-center mt-4">
+        <p class="text-muted small"><i class="bi bi-lock-fill"></i> Pagamento seguro via Asaas (Pix ou Cartão). Cancele quando quiser.</p>
+    </div>
+</div>
+{% endblock %}

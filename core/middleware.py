@@ -13,8 +13,8 @@ class SaasSecurityMiddleware:
         # /logout/ -> Para o cliente conseguir sair da conta bloqueada
         # /static/ e /media/ -> Para o CSS e as imagens carregarem na tela de bloqueio
         urls_liberadas = [
-            '/admin/', '/logout/', 
-            '/static/', '/media/'
+        '/admin/', '/logout/', '/login/', '/cadastro/', # <--- Adicione Login e Cadastro   
+        '/static/', '/media/', '/webhook/' # <--- Adicione Webhook também para o Asaas conseguir avisar         '/static/', '/media/'
         ]
         
         # Se o usuário não está logado ou é o dono do sistema (Você), deixa passar livre
@@ -39,7 +39,7 @@ class SaasSecurityMiddleware:
             # 2. Checa se venceu o Teste Grátis ou a Mensalidade
             if empresa.data_vencimento and empresa.data_vencimento < hoje:
                 # Em vez de só avisar, agora nós mostramos a tela de cobrança e impedimos o acesso
-                return render(request, 'core/pagamento_bloqueio.html', {'empresa': empresa})
+                return render(request, 'core/planos.html', {'empresa': empresa})
 
         return self.get_response(request)
     
