@@ -1,6 +1,7 @@
 # core/views.py
 
 # --- 1. IMPORTS GERAIS E DJANGO ---
+import uuid # <--- Adicione isso junto com os outros imports
 import requests
 import json
 from django.views.decorators.csrf import csrf_exempt # Para o Webhook
@@ -901,18 +902,22 @@ def cadastro_loja(request):
         if form.is_valid():
             data = form.cleaned_data
             
-            # 1. Criar a Empresa com 7 DIAS DE TESTE
-            import datetime # Garanta que importou datetime no topo ou use timezone
-            from django.utils import timezone # Melhor usar timezone do Django
+            # 1. Criar a Empresa com 7 DIAS DE TESTE e CNPJ PROVISÓRIO
+            import datetime 
+            from django.utils import timezone
             
             hoje = timezone.now().date()
             vencimento_teste = hoje + timezone.timedelta(days=7)
+            
+            # Gera um código único (ex: TEMP-a1b2c3d4) para não travar o banco
+            cnpj_provisorio = f"TEMP-{uuid.uuid4().hex[:8]}"
 
             nova_empresa = Empresa.objects.create(
                 nome_fantasia=data['nome_loja'],
+                cnpj=cnpj_provisorio,  # <--- O Pulo do Gato está aqui!
                 ativa=True,
-                data_vencimento=vencimento_teste, # <--- A MÁGICA É AQUI
-                plano='ESSENCIAL' # Começa no básico ou PRO, você decide
+                data_vencimento=vencimento_teste,
+                plano='ESSENCIAL'
             )
             
             # 2. Criar o Usuário Dono (Gerente)
