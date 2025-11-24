@@ -939,7 +939,7 @@ def cadastro_loja(request):
             # 4. Logar e Redirecionar
             login(request, novo_usuario)
             messages.success(request, f"Bem-vindo ao Nexum! Sua loja '{data['nome_loja']}' está pronta.")
-            return redirect('dashboard')
+            return redirect('escolher_plano')
             
     else:
         form = CadastroLojaForm()

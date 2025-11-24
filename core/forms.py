@@ -9,22 +9,29 @@ from .models import Produto, MovimentoCaixa, Usuario, Caixa, Empresa, Categoria,
 class ProdutoForm(forms.ModelForm):
     class Meta:
         model = Produto
-        # Atualizei para incluir os novos campos: Fornecedor e Comissão
         fields = ['nome', 'categoria', 'fornecedor', 'preco_custo', 'preco_venda', 'porcentagem_comissao', 'estoque_atual', 'codigo_barras', 'descricao', 'foto']
         
         widgets = {
             'nome': forms.TextInput(attrs={'class': 'form-control'}),
             'categoria': forms.Select(attrs={'class': 'form-select'}),
-            'fornecedor': forms.Select(attrs={'class': 'form-select'}), # Novo campo
+            'fornecedor': forms.Select(attrs={'class': 'form-select'}),
             'preco_custo': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'preco_venda': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
-            'porcentagem_comissao': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}), # Novo campo
+            'porcentagem_comissao': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': '0.00'}),
             'estoque_atual': forms.NumberInput(attrs={'class': 'form-control'}),
             'codigo_barras': forms.TextInput(attrs={'class': 'form-control'}),
             'descricao': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'foto': forms.ClearableFileInput(attrs={'class': 'form-control'}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super(ProdutoForm, self).__init__(*args, **kwargs)
+        # AQUI ESTÁ O PULO DO GATO: Tornamos os campos opcionais manualmente
+        self.fields['porcentagem_comissao'].required = False
+        self.fields['fornecedor'].required = False
+        self.fields['categoria'].required = False
+        self.fields['codigo_barras'].required = False
+        
 # --- Formulário de Abertura de Caixa ---
 class AberturaCaixaForm(forms.ModelForm):
     class Meta:

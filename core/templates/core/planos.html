@@ -86,4 +86,23 @@
         <p class="text-muted small"><i class="bi bi-lock-fill"></i> Pagamento seguro via Asaas (Pix ou Cartão). Cancele quando quiser.</p>
     </div>
 </div>
+
+{% if user.empresa.dias_restantes > 0 %}
+    <div class="row justify-content-center mt-5">
+        <div class="col-md-8">
+            <div class="card border-warning bg-warning bg-opacity-10 text-center p-4">
+                <h4 class="fw-bold text-dark">Quer testar antes de assinar?</h4>
+                <p class="text-muted">
+                    Você tem <strong>{{ user.empresa.dias_restantes }} dias grátis</strong> liberados automaticamente na sua conta.
+                    <br>Aproveite para cadastrar produtos e fazer vendas sem compromisso.
+                </p>
+                <a href="{% url 'dashboard' %}" class="btn btn-dark btn-lg px-5">
+                    Continuar com Teste Grátis <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+</div> 
 {% endblock %}
