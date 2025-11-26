@@ -950,6 +950,13 @@ def cadastro_loja(request):
 def iniciar_pagamento(request, plano):
     empresa = request.user.empresa
     
+    # --- NOVO: VERIFICAÇÃO DE DADOS REAIS ---
+    # Se o CNPJ ainda for o provisório (TEMP-...), manda corrigir
+    if "TEMP-" in empresa.cnpj or len(empresa.cnpj) < 11:
+        messages.warning(request, "⚠️ Para emitir a cobrança, precisamos do seu CPF ou CNPJ real. Por favor, atualize abaixo.")
+        return redirect('configuracoes')
+    # ----------------------------------------
+
     # 1. Define Valor
     if plano == 'ESSENCIAL': valor = 129.00
     elif plano == 'PRO': valor = 249.00
