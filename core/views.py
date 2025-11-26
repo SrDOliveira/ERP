@@ -129,119 +129,100 @@ def escolher_plano(request):
 # =========================================================
 @login_required
 def iniciar_pagamento(request, plano):
-    try:
-        empresa = request.user.empresa
-        
-        # Diagnóstico 1: Verificar Chaves
-        debug_info = [f"<h3>Diagnóstico de Pagamento</h3>"]
-        debug_info.append(f"<p><strong>API URL:</strong> {ASAAS_URL}</p>")
-        
-        if ASAAS_API_KEY:
-            debug_info.append(f"<p><strong>API Key:</strong> Detectada (Início: {ASAAS_API_KEY[:5]}...)</p>")
-        else:
-            return HttpResponse("ERRO CRÍTICO: Chave API não encontrada nas variáveis de ambiente.")
+    empresa = request.user.empresa
+    
+    # Verificações Iniciais
+    if "TEMP-" in empresa.cnpj or len(empresa.cnpj) < 11:
+        messages.warning(request, "⚠️ Para assinar, precisamos do seu CPF/CNPJ real. Atualize abaixo.")
+        return redirect('/configuracoes/?next=planos')
 
-        headers = {
-            "Content-Type": "application/json",
-            "access_token": ASAAS_API_KEY
-        }
+    if plano == 'ESSENCIAL': valor = 129.00
+    elif plano == 'PRO': valor = 249.00
+    else: return redirect('dashboard')
 
-        # 1. Tentar Criar/Buscar Cliente
+    if not ASAAS_API_KEY:
+        messages.error(request, "Erro: Chave de pagamento não configurada.")
+        return redirect('dashboard')
+
+    headers = {
+        "Content-Type": "application/json",
+        "access_token": ASAAS_API_KEY
+    }
+
+    # 1. Garantir Cliente no Asaas
+    if not empresa.asaas_customer_id:
         payload_cliente = { 
             "name": empresa.nome_fantasia, 
             "cpfCnpj": empresa.cnpj, 
             "email": request.user.email 
         }
-        
-        res_cliente = requests.post(f"{ASAAS_URL}/customers", json=payload_cliente, headers=headers)
-        debug_info.append(f"<hr><h4>1. Criação de Cliente</h4>")
-        debug_info.append(f"<p>Status: {res_cliente.status_code}</p>")
-        debug_info.append(f"<p>Resposta: {res_cliente.text}</p>")
-        
-        customer_id = None
-        if res_cliente.status_code == 200:
-            customer_id = res_cliente.json()['id']
-        elif res_cliente.status_code == 400 and 'cpfCnpj' in res_cliente.text:
-            # Tenta recuperar
-            res_busca = requests.get(f"{ASAAS_URL}/customers?cpfCnpj={empresa.cnpj}", headers=headers)
-            if res_busca.json().get('data'):
-                customer_id = res_busca.json()['data'][0]['id']
-                debug_info.append(f"<p>Cliente recuperado pelo CPF: {customer_id}</p>")
-            else:
-                return HttpResponse("".join(debug_info) + "<h3 style='color:red'>Falha ao recuperar cliente existente.</h3>")
-        else:
-            return HttpResponse("".join(debug_info) + "<h3 style='color:red'>Erro ao criar cliente.</h3>")
-
-        # 2. Tentar Criar Assinatura
-        valor = 129.00 if plano == 'ESSENCIAL' else 249.00
-        payload_ass = {
-            "customer": customer_id,
-            "billingType": "UNDEFINED",
-            "value": valor,
-            "nextDueDate": timezone.now().strftime('%Y-%m-%d'),
-            "cycle": "MONTHLY",
-            "description": f"Teste Nexum - {plano}"
-        }
-        
-        res_ass = requests.post(f"{ASAAS_URL}/subscriptions", json=payload_ass, headers=headers)
-        debug_info.append(f"<hr><h4>2. Criação de Assinatura</h4>")
-        debug_info.append(f"<p>Status: {res_ass.status_code}</p>")
-        debug_info.append(f"<p>Resposta: {res_ass.text}</p>")
-
-        sub_id = None
-        if res_ass.status_code == 200:
-            sub_id = res_ass.json()['id']
-        elif 'unique' in res_ass.text: # Já existe assinatura ativa
-             res_lista = requests.get(f"{ASAAS_URL}/subscriptions?customer={customer_id}&status=ACTIVE", headers=headers)
-             if res_lista.json().get('data'):
-                 sub_id = res_lista.json()['data'][0]['id']
-                 debug_info.append(f"<p>Assinatura recuperada: {sub_id}</p>")
-
-        if sub_id:
-            # 3. Buscar Faturas
-            res_fat = requests.get(f"{ASAAS_URL}/subscriptions/{sub_id}/payments", headers=headers)
-            debug_info.append(f"<hr><h4>3. Busca de Faturas</h4>")
-            debug_info.append(f"<p>Status: {res_fat.status_code}</p>")
-            debug_info.append(f"<p>Resposta: {res_fat.text}</p>")
-            
-            data = res_fat.json()
-            if 'data' in data and len(data['data']) > 0:
-                link = data['data'][0].get('invoiceUrl')
-                debug_info.append(f"<h2 style='color:green'>SUCESSO! Link encontrado: <a href='{link}'>{link}</a></h2>")
-            else:
-                debug_info.append(f"<h3 style='color:orange'>Assinatura criada, mas nenhuma fatura retornada.</h3>")
-        
-        return HttpResponse("".join(debug_info))
-
-    except Exception:
-        trace = traceback.format_exc()
-        return HttpResponse(f"<h1>ERRO DE PYTHON</h1><pre>{trace}</pre>")
-
-@csrf_exempt 
-def webhook_asaas(request):
-    if request.method == 'POST':
         try:
-            dados = json.loads(request.body)
-            evento = dados.get('event')
-            payment = dados.get('payment')
-            
-            if evento in ['PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED']:
-                customer_id = payment.get('customer')
-                try:
-                    empresa = Empresa.objects.get(asaas_customer_id=customer_id)
-                    empresa.ativa = True
-                    empresa.data_vencimento = timezone.now().date() + timedelta(days=30)
-                    val = float(payment.get('value', 0))
-                    if val >= 249: empresa.plano = 'PRO'
-                    else: empresa.plano = 'ESSENCIAL'
+            res = requests.post(f"{ASAAS_URL}/customers", json=payload_cliente, headers=headers)
+            if res.status_code == 200:
+                empresa.asaas_customer_id = res.json()['id']
+                empresa.save()
+            elif res.status_code == 400 and 'cpfCnpj' in res.text:
+                # Se já existe, busca pelo CPF
+                res_busca = requests.get(f"{ASAAS_URL}/customers?cpfCnpj={empresa.cnpj}", headers=headers)
+                if res_busca.json().get('data'):
+                    empresa.asaas_customer_id = res_busca.json()['data'][0]['id']
                     empresa.save()
-                    return JsonResponse({'status': 'ok'})
-                except Empresa.DoesNotExist:
-                    return JsonResponse({'status': 'empresa nao encontrada'}, status=404)
-            return JsonResponse({'status': 'ignorado'})
+                else:
+                    messages.error(request, "Erro ao identificar cliente no sistema de pagamento.")
+                    return redirect('dashboard')
+            else:
+                messages.error(request, "Erro ao cadastrar cliente no pagamento.")
+                return redirect('dashboard')
         except:
-            return JsonResponse({'status': 'erro'}, status=500)
-    return HttpResponseForbidden()
+            messages.error(request, "Erro de conexão.")
+            return redirect('dashboard')
+
+    # 2. Criar Assinatura
+    payload_assinatura = {
+        "customer": empresa.asaas_customer_id,
+        "billingType": "UNDEFINED", 
+        "value": valor,
+        "nextDueDate": timezone.now().strftime('%Y-%m-%d'),
+        "cycle": "MONTHLY",
+        "description": f"Assinatura Nexum ERP - Plano {plano}"
+    }
+
+    try:
+        # Tenta criar
+        response = requests.post(f"{ASAAS_URL}/subscriptions", json=payload_assinatura, headers=headers)
+        sub_id = None
+        
+        if response.status_code == 200:
+            sub_id = response.json()['id']
+        elif 'unique' in response.text:
+            # Se já existe assinatura ativa, recupera o ID dela
+            res_lista = requests.get(f"{ASAAS_URL}/subscriptions?customer={empresa.asaas_customer_id}&status=ACTIVE", headers=headers)
+            if res_lista.json().get('data'):
+                sub_id = res_lista.json()['data'][0]['id']
+        
+        if sub_id:
+            # 3. Buscar a Fatura (O Pulo do Gato)
+            import time
+            time.sleep(0.5) # Pequena pausa para garantir que o Asaas gerou a fatura
+            
+            pagamentos_res = requests.get(f"{ASAAS_URL}/subscriptions/{sub_id}/payments", headers=headers)
+            
+            if pagamentos_res.status_code == 200:
+                lista = pagamentos_res.json().get('data', [])
+                for cobranca in lista:
+                    if cobranca['status'] == 'PENDING':
+                        # SUCESSO TOTAL: Redireciona para o pagamento
+                        return redirect(cobranca['invoiceUrl'])
+            
+            messages.warning(request, "Assinatura ativa! O boleto foi enviado para seu e-mail.")
+            return redirect('dashboard')
+        else:
+            messages.error(request, "Não foi possível gerar a assinatura. Tente novamente.")
+            return redirect('dashboard')
+
+    except Exception as e:
+        messages.error(request, f"Erro técnico no pagamento: {str(e)}")
+        return redirect('dashboard')
 
 # =========================================================
 #  CAIXA E PDV
