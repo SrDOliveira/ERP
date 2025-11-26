@@ -133,93 +133,98 @@ def escolher_plano(request):
 # =========================================================
 #  PAGAMENTOS E ASSINATURA (ASAAS)
 # =========================================================
+# core/views.py
+
 @login_required
 def iniciar_pagamento(request, plano):
-    empresa = request.user.empresa
-    
-    # Define Valor
-    if plano == 'ESSENCIAL': valor = 129.00
-    elif plano == 'PRO': valor = 249.00
-    else: return redirect('dashboard')
-
-    if not ASAAS_API_KEY:
-        messages.error(request, "Erro de Configuração: Chave API ausente.")
-        return redirect('dashboard')
-
-    headers = {"Content-Type": "application/json", "access_token": ASAAS_API_KEY}
-
-    # 1. Garante o Cliente
-    if not empresa.asaas_customer_id:
-        # ... (código de criar cliente igual ao anterior) ...
-        # Se quiser, posso colar essa parte de novo, mas ela estava funcionando
-        payload_cliente = { "name": empresa.nome_fantasia, "cpfCnpj": empresa.cnpj, "email": request.user.email }
-        try:
-            res = requests.post(f"{ASAAS_URL}/customers", json=payload_cliente, headers=headers)
-            if res.status_code == 200:
-                empresa.asaas_customer_id = res.json()['id']
-                empresa.save()
-            else:
-                # Se der erro (ex: já existe), tenta buscar pelo CPF/CNPJ
-                res_busca = requests.get(f"{ASAAS_URL}/customers?cpfCnpj={empresa.cnpj}", headers=headers)
-                if res_busca.status_code == 200 and res_busca.json()['data']:
-                    empresa.asaas_customer_id = res_busca.json()['data'][0]['id']
-                    empresa.save()
-                else:
-                    messages.error(request, "Erro ao cadastrar cliente no Asaas.")
-                    return redirect('dashboard')
-        except:
-            return redirect('dashboard')
-
-    # 2. Cria a Assinatura
-    payload_assinatura = {
-        "customer": empresa.asaas_customer_id,
-        "billingType": "UNDEFINED", 
-        "value": valor,
-        "nextDueDate": timezone.now().strftime('%Y-%m-%d'),
-        "cycle": "MONTHLY",
-        "description": f"Assinatura Nexum ERP - Plano {plano}"
-    }
-
     try:
-        # Tenta criar assinatura
-        response = requests.post(f"{ASAAS_URL}/subscriptions", json=payload_assinatura, headers=headers)
+        empresa = request.user.empresa
         
-        # Se criou (200) ou se diz que já existe (400), precisamos do ID da assinatura
+        # Diagnóstico 1: Verificar Chaves
+        debug_info = [f"<h3>Diagnóstico de Pagamento</h3>"]
+        debug_info.append(f"<p><strong>API URL:</strong> {ASAAS_URL}</p>")
+        debug_info.append(f"<p><strong>API Key (Início):</strong> {ASAAS_API_KEY[:10]}...</p>")
+        
+        if not ASAAS_API_KEY:
+            return HttpResponse("ERRO CRÍTICO: Chave API não encontrada nas variáveis de ambiente.")
+
+        headers = {
+            "Content-Type": "application/json",
+            "access_token": ASAAS_API_KEY
+        }
+
+        # 1. Tentar Criar/Buscar Cliente
+        payload_cliente = { 
+            "name": empresa.nome_fantasia, 
+            "cpfCnpj": empresa.cnpj, 
+            "email": request.user.email 
+        }
+        
+        res_cliente = requests.post(f"{ASAAS_URL}/customers", json=payload_cliente, headers=headers)
+        debug_info.append(f"<hr><h4>1. Criação de Cliente</h4>")
+        debug_info.append(f"<p>Status: {res_cliente.status_code}</p>")
+        debug_info.append(f"<p>Resposta: {res_cliente.text}</p>")
+        
+        if res_cliente.status_code == 200:
+            customer_id = res_cliente.json()['id']
+        elif res_cliente.status_code == 400 and 'cpfCnpj' in res_cliente.text:
+            # Tenta recuperar
+            res_busca = requests.get(f"{ASAAS_URL}/customers?cpfCnpj={empresa.cnpj}", headers=headers)
+            if res_busca.json()['data']:
+                customer_id = res_busca.json()['data'][0]['id']
+                debug_info.append(f"<p>Cliente recuperado pelo CPF: {customer_id}</p>")
+            else:
+                return HttpResponse("".join(debug_info) + "<h3 style='color:red'>Falha ao recuperar cliente existente.</h3>")
+        else:
+            return HttpResponse("".join(debug_info) + "<h3 style='color:red'>Erro ao criar cliente.</h3>")
+
+        # 2. Tentar Criar Assinatura
+        valor = 129.00 if plano == 'ESSENCIAL' else 249.00
+        payload_ass = {
+            "customer": customer_id,
+            "billingType": "UNDEFINED",
+            "value": valor,
+            "nextDueDate": timezone.now().strftime('%Y-%m-%d'),
+            "cycle": "MONTHLY",
+            "description": f"Teste Nexum - {plano}"
+        }
+        
+        res_ass = requests.post(f"{ASAAS_URL}/subscriptions", json=payload_ass, headers=headers)
+        debug_info.append(f"<hr><h4>2. Criação de Assinatura</h4>")
+        debug_info.append(f"<p>Status: {res_ass.status_code}</p>")
+        debug_info.append(f"<p>Resposta: {res_ass.text}</p>")
+
         sub_id = None
-        
-        if response.status_code == 200:
-            sub_id = response.json()['id']
-        else:
-            # Se der erro, vamos tentar listar as assinaturas desse cliente para achar a ativa
-            # Isso resolve se o cliente clicou duas vezes
-            res_lista = requests.get(f"{ASAAS_URL}/subscriptions?customer={empresa.asaas_customer_id}", headers=headers)
-            if res_lista.status_code == 200 and res_lista.json()['data']:
-                sub_id = res_lista.json()['data'][0]['id']
-        
+        if res_ass.status_code == 200:
+            sub_id = res_ass.json()['id']
+        elif 'unique' in res_ass.text:
+             # Recuperar assinatura existente
+             res_lista = requests.get(f"{ASAAS_URL}/subscriptions?customer={customer_id}&status=ACTIVE", headers=headers)
+             if res_lista.json()['data']:
+                 sub_id = res_lista.json()['data'][0]['id']
+                 debug_info.append(f"<p>Assinatura recuperada: {sub_id}</p>")
+
         if sub_id:
-            # 3. BUSCA O LINK DE PAGAMENTO (Onde dava erro)
-            # Pede a lista de cobranças dessa assinatura
-            pagamentos_res = requests.get(f"{ASAAS_URL}/subscriptions/{sub_id}/payments", headers=headers)
+            # 3. Buscar Faturas
+            res_fat = requests.get(f"{ASAAS_URL}/subscriptions/{sub_id}/payments", headers=headers)
+            debug_info.append(f"<hr><h4>3. Busca de Faturas</h4>")
+            debug_info.append(f"<p>Status: {res_fat.status_code}</p>")
+            debug_info.append(f"<p>Resposta: {res_fat.text}</p>")
             
-            if pagamentos_res.status_code == 200:
-                lista = pagamentos_res.json().get('data', [])
-                if lista:
-                    # Pega a primeira pendente
-                    for cobranca in lista:
-                        if cobranca['status'] == 'PENDING':
-                            return redirect(cobranca['invoiceUrl']) # <--- AQUI ESTÁ O LINK CERTO
-            
-            messages.warning(request, "Assinatura ativa, mas boleto ainda não gerado. Verifique seu e-mail.")
-            return redirect('dashboard')
-            
-        else:
-            messages.error(request, f"Erro ao criar assinatura: {response.text}")
-            return redirect('dashboard')
+            # Tenta achar o link
+            data = res_fat.json()
+            if 'data' in data and len(data['data']) > 0:
+                link = data['data'][0].get('invoiceUrl')
+                debug_info.append(f"<h2 style='color:green'>SUCESSO! Link encontrado: <a href='{link}'>{link}</a></h2>")
+            else:
+                debug_info.append(f"<h3 style='color:orange'>Assinatura criada, mas nenhuma fatura retornada.</h3>")
+        
+        return HttpResponse("".join(debug_info))
 
     except Exception as e:
-        messages.error(request, f"Erro técnico no pagamento: {str(e)}")
-        print(f"ERRO CRÍTICO: {e}") # Veja isso nos logs do Render
-        return redirect('dashboard')
+        import traceback
+        trace = traceback.format_exc()
+        return HttpResponse(f"<h1>ERRO DE PYTHON</h1><pre>{trace}</pre>")
     
 @csrf_exempt 
 def webhook_asaas(request):
