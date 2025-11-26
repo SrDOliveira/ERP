@@ -53,5 +53,5 @@ urlpatterns = [
     path('pagamento/iniciar/<str:plano>/', views.iniciar_pagamento, name='iniciar_pagamento'),
     path('webhook/asaas/', views.webhook_asaas, name='webhook_asaas'),
     path('assinatura/planos/', views.escolher_plano, name='escolher_plano'),
-
+    path('inicio/', views.rota_inicial, name='rota_inicial'),
 ]

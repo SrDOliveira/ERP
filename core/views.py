@@ -150,12 +150,12 @@ def iniciar_pagamento(request, plano):
 
     # Verifica Chave API
     if not ASAAS_API_KEY:
-        messages.error(request, "Erro: Chave API do Asaas não configurada no sistema.")
+        messages.error(request, "Erro: Chave API do Asaas não configurada.")
         return redirect('dashboard')
 
     headers = {"Content-Type": "application/json", "access_token": ASAAS_API_KEY}
 
-    # Criar Cliente no Asaas
+    # 1. Criar Cliente no Asaas (Se não existir)
     if not empresa.asaas_customer_id:
         payload_cliente = {
             "name": empresa.nome_fantasia,
@@ -175,27 +175,49 @@ def iniciar_pagamento(request, plano):
             messages.error(request, f"Erro de conexão: {str(e)}")
             return redirect('dashboard')
 
-    # Criar Cobrança
+    # 2. Criar a Assinatura
     payload_assinatura = {
         "customer": empresa.asaas_customer_id,
-        "billingType": "UNDEFINED", 
+        "billingType": "UNDEFINED", # Cliente escolhe como pagar (Pix/Cartão/Boleto)
         "value": valor,
-        "nextDueDate": timezone.now().strftime('%Y-%m-%d'),
+        "nextDueDate": timezone.now().strftime('%Y-%m-%d'), # Vence hoje
         "cycle": "MONTHLY",
         "description": f"Assinatura Nexum ERP - Plano {plano}"
     }
 
     try:
         response = requests.post(f"{ASAAS_URL}/subscriptions", json=payload_assinatura, headers=headers)
+        
         if response.status_code == 200:
-            return redirect(response.json()['billUrl'])
-        else:
-            messages.error(request, "Erro ao gerar cobrança no Asaas.")
+            sub_data = response.json()
+            sub_id = sub_data['id']
+            
+            # --- CORREÇÃO AQUI: Buscar a cobrança gerada para pegar o link ---
+            # A assinatura foi criada, agora pegamos a fatura dela
+            pagamentos_res = requests.get(f"{ASAAS_URL}/subscriptions/{sub_id}/payments", headers=headers)
+            
+            if pagamentos_res.status_code == 200:
+                lista_pagamentos = pagamentos_res.json().get('data', [])
+                if lista_pagamentos:
+                    # Pega o link da primeira fatura (invoiceUrl é a página de pagamento bonita do Asaas)
+                    link_pagamento = lista_pagamentos[0].get('invoiceUrl')
+                    return redirect(link_pagamento)
+            
+            # Caso não ache o link (raro), avisa que foi por email
+            messages.success(request, "Assinatura criada! O link de pagamento foi enviado para seu e-mail.")
             return redirect('dashboard')
+            
+        else:
+            erro_msg = response.json().get('errors', [{'description': 'Erro desconhecido'}])[0]['description']
+            # Se der erro de "Já existe assinatura", tenta recuperar a existente? 
+            # Por enquanto apenas avisa:
+            messages.error(request, f"Erro na assinatura: {erro_msg}")
+            return redirect('dashboard')
+            
     except Exception as e:
         messages.error(request, f"Erro técnico: {str(e)}")
         return redirect('dashboard')
-
+    
 @csrf_exempt 
 def webhook_asaas(request):
     if request.method == 'POST':
@@ -355,7 +377,7 @@ def pdv(request, venda_id):
     formas_pagamento = FormaPagamento.objects.filter(empresa=request.user.empresa)
     total = sum(item.subtotal for item in venda.itens.all())
     
-    return render(request, 'core/pdv.html', {
+    return render(request, 'template_name', {
         'venda': venda,
         'produtos': produtos,
         'clientes': clientes,
@@ -607,3 +629,12 @@ def alternar_status_loja(request, empresa_id):
 def gerar_contrato_pdf(request, empresa_id):
     # ...
     return HttpResponse("PDF") # Simplificado
+
+@login_required
+def rota_inicial(request):
+    # Se for Vendedor ou Caixa, vai direto pra venda
+    if request.user.cargo in ['VENDEDOR', 'CAIXA']:
+        return redirect('criar_venda')
+
+    # Se for Gerente/Dono, vai pro Dashboard ver os gráficos
+    return redirect('dashboard')

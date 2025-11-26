@@ -1,0 +1,129 @@
+{% extends 'core/base_pdv.html' %}
+
+{% block content %}
+<div class="container-fluid h-100 p-3">
+    <div class="row h-100">
+        
+        <div class="col-md-7 h-100">
+            <div class="card h-100 shadow-sm border-0">
+                <div class="card-header bg-white fw-bold">ITENS DA VENDA #{{ venda.id }}</div>
+                <div class="card-body p-0 overflow-auto" style="background: #fff8e1;"> <table class="table table-striped mb-0">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>#</th>
+                                <th>Produto</th>
+                                <th class="text-center">Qtd</th>
+                                <th class="text-end">Unit.</th>
+                                <th class="text-end">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in venda.itens.all %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td class="fw-bold">{{ item.produto.nome }}</td>
+                                <td class="text-center">{{ item.quantidade }}</td>
+                                <td class="text-end">{{ item.preco_unitario }}</td>
+                                <td class="text-end">{{ item.subtotal }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="5" class="text-center py-5 text-muted"><h3>CAIXA LIVRE</h3>Aguardando produtos...</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-5 d-flex flex-column">
+            
+            <div class="display-total shadow">
+                <small class="text-white-50 d-block">TOTAL A PAGAR</small>
+                <span class="display-1 fw-bold">R$ {{ total|floatformat:2 }}</span>
+            </div>
+
+            <div class="card mb-3 shadow-sm">
+                <div class="card-body">
+                    <form action="{% url 'adicionar_item' venda.id %}" method="POST" id="formAdd">
+                        {% csrf_token %}
+                        <label class="fw-bold text-muted">Código de Barras ou Nome (F1)</label>
+                        <div class="input-group input-group-lg">
+                            <select name="produto" class="form-select" id="selectProduto" autofocus>
+                                <option value="">Bipar ou Digitar...</option>
+                                {% for p in produtos %}
+                                <option value="{{ p.id }}">{{ p.nome }} (R$ {{ p.preco_venda }})</option>
+                                {% endfor %}
+                            </select>
+                            <input type="number" name="quantidade" value="1" class="form-control" style="max-width: 80px;">
+                            <button class="btn btn-primary" type="submit">Lançar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="row g-2 mt-auto">
+                <div class="col-6">
+                    <a href="{% url 'imprimir_cupom' venda.id %}" target="_blank" class="btn btn-secondary w-100 py-3 fw-bold">
+                        <i class="bi bi-printer"></i> Reimprimir (F8)
+                    </a>
+                </div>
+                <div class="col-6">
+                    <button type="button" class="btn btn-success w-100 py-3 fw-bold" data-bs-toggle="modal" data-bs-target="#modalPagamento">
+                        <i class="bi bi-check-circle"></i> FINALIZAR (F2)
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalPagamento" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">Finalizar Venda</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <h1 class="text-center text-success fw-bold mb-4">R$ {{ total|floatformat:2 }}</h1>
+                
+                <form method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="acao" value="fechar_venda">
+                    
+                    <div class="mb-3">
+                        <label class="fw-bold">Forma de Pagamento</label>
+                        <select name="forma_pagamento" class="form-select form-select-lg" required>
+                            {% for fp in formas_pagamento %}
+                            <option value="{{ fp.id }}">{{ fp.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-check form-switch mb-3 p-3 border rounded">
+                        <input class="form-check-input" type="checkbox" id="nfce" name="emitir_fiscal">
+                        <label class="form-check-label" for="nfce">Emitir CPF na Nota?</label>
+                    </div>
+
+                    <button type="submit" class="btn btn-success w-100 btn-lg">CONFIRMAR PAGAMENTO (Enter)</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('keydown', function(e) {
+        if(e.key === 'F2') {
+            e.preventDefault();
+            var myModal = new bootstrap.Modal(document.getElementById('modalPagamento'));
+            myModal.show();
+        }
+        if(e.key === 'F1') {
+            e.preventDefault();
+            document.getElementById('selectProduto').focus();
+        }
+    });
+</script>
+{% endblock %}

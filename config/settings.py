@@ -140,7 +140,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Quando o usuário entrar no site sem logar, joga ele pra cá:
 LOGIN_URL = 'login' 
 # Quando ele logar com sucesso, joga ele pra cá (Dashboard):
-LOGIN_REDIRECT_URL = 'dashboard'
+LOGIN_REDIRECT_URL = 'rota_inicial'
 # Quando ele sair, manda ele de volta pro login:
 LOGOUT_REDIRECT_URL = 'login'
 
