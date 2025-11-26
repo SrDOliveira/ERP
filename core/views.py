@@ -1,10 +1,10 @@
-# core/views.py
+# core/views.py (VERSÃO COMPLETA COM DIAGNÓSTICO DE PAGAMENTO)
 
-# --- 1. IMPORTS ---
 import os
 import uuid
 import requests
 import json
+import traceback # Importante para o erro
 from datetime import timedelta
 
 from django.contrib import messages
@@ -18,9 +18,9 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
+
 from weasyprint import HTML
 
-# --- MODELOS E FORMS ---
 from .models import (
     Venda, ItemVenda, Produto, Cliente, Lancamento, Empresa, 
     MovimentoCaixa, Caixa, FormaPagamento, Usuario,
@@ -33,32 +33,26 @@ from .forms import (
     CadastroLojaForm
 )
 
-# --- CONFIGURAÇÕES ASAAS ---
+# CONFIGURAÇÕES ASAAS
 ASAAS_API_KEY = os.environ.get('ASAAS_API_KEY', '')
 ASAAS_URL = os.environ.get('ASAAS_URL', 'https://www.asaas.com/api/v3')
 
 # =========================================================
-#  DASHBOARD
+#  DASHBOARD & INICIO
 # =========================================================
 @login_required
 def dashboard(request):
     empresa_usuario = request.user.empresa
     hoje = timezone.now().date()
     
-    # Estoque Baixo
     estoque_baixo_count = Produto.objects.filter(
         empresa=empresa_usuario, 
         estoque_atual__lte=F('estoque_minimo')
     ).count()
 
-    # KPIs Financeiros
     vendas_hoje = Venda.objects.filter(empresa=empresa_usuario, data_venda__date=hoje, status='FECHADA')
     total_hoje = vendas_hoje.aggregate(Sum('valor_total'))['valor_total__sum'] or 0
     qtd_vendas = vendas_hoje.count()
-    
-    # Gráfico
-    sete_dias_atras = hoje - timedelta(days=7)
-    ultimas_vendas = Venda.objects.filter(empresa=empresa_usuario).order_by('-data_venda')[:5]
     
     datas_grafico = []
     valores_grafico = []
@@ -67,6 +61,8 @@ def dashboard(request):
         val = Venda.objects.filter(empresa=empresa_usuario, status='FECHADA', data_venda__date=d).aggregate(Sum('valor_total'))['valor_total__sum'] or 0
         datas_grafico.append(d.strftime('%d/%m'))
         valores_grafico.append(float(val))
+
+    ultimas_vendas = Venda.objects.filter(empresa=empresa_usuario).order_by('-data_venda')[:5]
 
     return render(request, 'core/index.html', {
         'total_clientes': Cliente.objects.filter(empresa=empresa_usuario).count(),
@@ -79,28 +75,30 @@ def dashboard(request):
         'valores_grafico': valores_grafico,
     })
 
+@login_required
+def rota_inicial(request):
+    if request.user.cargo in ['VENDEDOR', 'CAIXA']:
+        return redirect('criar_venda')
+    return redirect('dashboard')
+
 # =========================================================
-#  AUTO-CADASTRO (SIGN UP)
+#  AUTO-CADASTRO
 # =========================================================
 def cadastro_loja(request):
     if request.method == 'POST':
         form = CadastroLojaForm(request.POST)
         if form.is_valid():
             data = form.cleaned_data
-            
-            # Cria CNPJ Provisório
             cnpj_provisorio = f"TEMP-{uuid.uuid4().hex[:8]}"
 
-            # 1. Criar Empresa
             nova_empresa = Empresa.objects.create(
                 nome_fantasia=data['nome_loja'],
                 cnpj=cnpj_provisorio,
                 ativa=True,
-                data_vencimento=timezone.now().date() + timedelta(days=7), # 7 dias grátis
+                data_vencimento=timezone.now().date() + timedelta(days=7),
                 plano='ESSENCIAL'
             )
             
-            # 2. Criar Usuário Gerente
             novo_usuario = Usuario.objects.create_user(
                 username=data['username'],
                 email=data['email'],
@@ -110,20 +108,16 @@ def cadastro_loja(request):
                 cargo='GERENTE'
             )
             
-            # 3. Onboarding (Dados Iniciais)
             Caixa.objects.create(empresa=nova_empresa, nome="Caixa Principal", observacao="Caixa padrão")
             FormaPagamento.objects.create(empresa=nova_empresa, nome="Dinheiro", taxa=0)
             FormaPagamento.objects.create(empresa=nova_empresa, nome="Cartão Crédito", taxa=3.5, dias_para_receber=30)
             FormaPagamento.objects.create(empresa=nova_empresa, nome="PIX", taxa=0)
             
-            # 4. Logar e Redirecionar para Planos
             login(request, novo_usuario)
-            messages.success(request, f"Bem-vindo! Sua loja foi criada. Escolha como deseja continuar.")
+            messages.success(request, f"Bem-vindo ao Nexum! Sua loja foi criada.")
             return redirect('escolher_plano')
-            
     else:
         form = CadastroLojaForm()
-        
     return render(request, 'core/signup.html', {'form': form})
 
 @login_required
@@ -131,10 +125,8 @@ def escolher_plano(request):
     return render(request, 'core/planos.html')
 
 # =========================================================
-#  PAGAMENTOS E ASSINATURA (ASAAS)
+#  PAGAMENTOS (MODO DIAGNÓSTICO)
 # =========================================================
-# core/views.py
-
 @login_required
 def iniciar_pagamento(request, plano):
     try:
@@ -143,9 +135,10 @@ def iniciar_pagamento(request, plano):
         # Diagnóstico 1: Verificar Chaves
         debug_info = [f"<h3>Diagnóstico de Pagamento</h3>"]
         debug_info.append(f"<p><strong>API URL:</strong> {ASAAS_URL}</p>")
-        debug_info.append(f"<p><strong>API Key (Início):</strong> {ASAAS_API_KEY[:10]}...</p>")
         
-        if not ASAAS_API_KEY:
+        if ASAAS_API_KEY:
+            debug_info.append(f"<p><strong>API Key:</strong> Detectada (Início: {ASAAS_API_KEY[:5]}...)</p>")
+        else:
             return HttpResponse("ERRO CRÍTICO: Chave API não encontrada nas variáveis de ambiente.")
 
         headers = {
@@ -165,12 +158,13 @@ def iniciar_pagamento(request, plano):
         debug_info.append(f"<p>Status: {res_cliente.status_code}</p>")
         debug_info.append(f"<p>Resposta: {res_cliente.text}</p>")
         
+        customer_id = None
         if res_cliente.status_code == 200:
             customer_id = res_cliente.json()['id']
         elif res_cliente.status_code == 400 and 'cpfCnpj' in res_cliente.text:
             # Tenta recuperar
             res_busca = requests.get(f"{ASAAS_URL}/customers?cpfCnpj={empresa.cnpj}", headers=headers)
-            if res_busca.json()['data']:
+            if res_busca.json().get('data'):
                 customer_id = res_busca.json()['data'][0]['id']
                 debug_info.append(f"<p>Cliente recuperado pelo CPF: {customer_id}</p>")
             else:
@@ -197,10 +191,9 @@ def iniciar_pagamento(request, plano):
         sub_id = None
         if res_ass.status_code == 200:
             sub_id = res_ass.json()['id']
-        elif 'unique' in res_ass.text:
-             # Recuperar assinatura existente
+        elif 'unique' in res_ass.text: # Já existe assinatura ativa
              res_lista = requests.get(f"{ASAAS_URL}/subscriptions?customer={customer_id}&status=ACTIVE", headers=headers)
-             if res_lista.json()['data']:
+             if res_lista.json().get('data'):
                  sub_id = res_lista.json()['data'][0]['id']
                  debug_info.append(f"<p>Assinatura recuperada: {sub_id}</p>")
 
@@ -211,7 +204,6 @@ def iniciar_pagamento(request, plano):
             debug_info.append(f"<p>Status: {res_fat.status_code}</p>")
             debug_info.append(f"<p>Resposta: {res_fat.text}</p>")
             
-            # Tenta achar o link
             data = res_fat.json()
             if 'data' in data and len(data['data']) > 0:
                 link = data['data'][0].get('invoiceUrl')
@@ -221,11 +213,10 @@ def iniciar_pagamento(request, plano):
         
         return HttpResponse("".join(debug_info))
 
-    except Exception as e:
-        import traceback
+    except Exception:
         trace = traceback.format_exc()
         return HttpResponse(f"<h1>ERRO DE PYTHON</h1><pre>{trace}</pre>")
-    
+
 @csrf_exempt 
 def webhook_asaas(request):
     if request.method == 'POST':
@@ -240,23 +231,20 @@ def webhook_asaas(request):
                     empresa = Empresa.objects.get(asaas_customer_id=customer_id)
                     empresa.ativa = True
                     empresa.data_vencimento = timezone.now().date() + timedelta(days=30)
-                    
-                    valor_pago = float(payment.get('value', 0))
-                    if valor_pago >= 249: empresa.plano = 'PRO'
+                    val = float(payment.get('value', 0))
+                    if val >= 249: empresa.plano = 'PRO'
                     else: empresa.plano = 'ESSENCIAL'
-                        
                     empresa.save()
-                    return JsonResponse({'status': 'recebido e liberado'})
+                    return JsonResponse({'status': 'ok'})
                 except Empresa.DoesNotExist:
                     return JsonResponse({'status': 'empresa nao encontrada'}, status=404)
-            
             return JsonResponse({'status': 'ignorado'})
-        except Exception as e:
-            return JsonResponse({'status': 'erro', 'msg': str(e)}, status=500)
+        except:
+            return JsonResponse({'status': 'erro'}, status=500)
     return HttpResponseForbidden()
 
 # =========================================================
-#  CONTROLE DE CAIXA
+#  CAIXA E PDV
 # =========================================================
 @login_required
 def gerenciar_caixa(request):
@@ -273,57 +261,44 @@ def abrir_caixa(request):
     if request.method == 'POST':
         form = AberturaCaixaForm(request.user, request.POST)
         if form.is_valid():
-            movimento = form.save(commit=False)
-            movimento.empresa = request.user.empresa
-            movimento.operador = request.user
-            movimento.save()
-            return redirect('criar_venda') # Vai direto vender
+            mov = form.save(commit=False)
+            mov.empresa = request.user.empresa
+            mov.operador = request.user
+            mov.save()
+            return redirect('criar_venda')
     else:
         form = AberturaCaixaForm(request.user)
-    
     return render(request, 'core/form_abrir_caixa.html', {'form': form})
 
 @login_required
 def fechar_caixa(request, movimento_id):
-    movimento = get_object_or_404(MovimentoCaixa, id=movimento_id, operador=request.user, status='ABERTO')
-    total_vendido = movimento.vendas.filter(status='FECHADA').aggregate(Sum('valor_total'))['valor_total__sum'] or 0
-    valor_esperado = movimento.valor_abertura + total_vendido
+    mov = get_object_or_404(MovimentoCaixa, id=movimento_id, operador=request.user, status='ABERTO')
+    total_vendido = mov.vendas.filter(status='FECHADA').aggregate(Sum('valor_total'))['valor_total__sum'] or 0
+    valor_esperado = mov.valor_abertura + total_vendido
 
     if request.method == 'POST':
-        form = FechamentoCaixaForm(request.user, request.POST, instance=movimento)
+        form = FechamentoCaixaForm(request.user, request.POST, instance=mov)
         if form.is_valid():
-            movimento = form.save(commit=False)
-            movimento.status = 'FECHADO'
-            movimento.data_fechamento = timezone.now()
-            movimento.diferenca = movimento.valor_fechamento - valor_esperado
-            movimento.save()
+            mov = form.save(commit=False)
+            mov.status = 'FECHADO'
+            mov.data_fechamento = timezone.now()
+            mov.diferenca = mov.valor_fechamento - valor_esperado
+            mov.save()
             return redirect('dashboard')
     else:
-        form = FechamentoCaixaForm(request.user, instance=movimento)
+        form = FechamentoCaixaForm(request.user, instance=mov)
+    return render(request, 'core/form_fechar_caixa.html', {'form': form, 'movimento': mov, 'total_vendido': total_vendido, 'valor_esperado': valor_esperado})
 
-    return render(request, 'core/form_fechar_caixa.html', {
-        'form': form, 
-        'movimento': movimento,
-        'total_vendido': total_vendido,
-        'valor_esperado': valor_esperado
-    })
-
-# =========================================================
-#  PDV E VENDAS
-# =========================================================
 @login_required
 def criar_venda(request):
     caixa_aberto = MovimentoCaixa.objects.filter(operador=request.user, status='ABERTO').first()
     if not caixa_aberto:
         return render(request, 'core/erro_caixa_fechado.html')
 
-    empresa = request.user.empresa
-    cliente_padrao = Cliente.objects.filter(empresa=empresa).first()
-    
     venda = Venda.objects.create(
-        empresa=empresa,
+        empresa=request.user.empresa,
         vendedor=request.user,
-        cliente=cliente_padrao,
+        cliente=Cliente.objects.filter(empresa=request.user.empresa).first(),
         status='ORCAMENTO',
         movimento_caixa=caixa_aberto
     )
@@ -335,19 +310,16 @@ def pdv(request, venda_id):
     
     if request.method == 'POST':
         acao = request.POST.get('acao')
-        
         if request.POST.get('cliente'):
             venda.cliente_id = request.POST.get('cliente')
             venda.save()
             
         if acao == 'fechar_venda':
-            forma_pagto_id = request.POST.get('forma_pagamento')
-            
-            if forma_pagto_id:
-                total = sum(item.subtotal for item in venda.itens.all())
-                venda.valor_total = total
+            forma_id = request.POST.get('forma_pagamento')
+            if forma_id:
+                venda.valor_total = sum(i.subtotal for i in venda.itens.all())
                 venda.status = 'FECHADA'
-                venda.forma_pagamento_id = forma_pagto_id
+                venda.forma_pagamento_id = forma_id
                 venda.save()
                 
                 if venda.cliente:
@@ -355,130 +327,122 @@ def pdv(request, venda_id):
                     venda.cliente.save()
                 
                 for item in venda.itens.all():
-                    p = item.produto
-                    p.estoque_atual -= item.quantidade
-                    p.save()
+                    item.produto.estoque_atual -= item.quantidade
+                    item.produto.save()
 
-                quer_nota = request.POST.get('emitir_fiscal')
-                if quer_nota:
-                    # Aqui entra API fiscal
+                if request.POST.get('emitir_fiscal'):
                     venda.nota_fiscal_emitida = True
                     venda.save()
-                    messages.success(request, "Venda Fechada! Nota Fiscal em processamento.")
+                    messages.success(request, "Venda Fechada (Nota Fiscal em processamento).")
                 else:
                     messages.success(request, "Venda Fechada com sucesso.")
 
                 Lancamento.objects.create(
-                    empresa=venda.empresa,
-                    tipo='RECEITA',
-                    titulo=f"Venda #{venda.id} - {venda.forma_pagamento.nome}",
-                    valor=total,
-                    data_vencimento=timezone.now().date(),
-                    data_pagamento=timezone.now().date(),
-                    pago=True,
-                    venda_origem=venda
+                    empresa=venda.empresa, tipo='RECEITA',
+                    titulo=f"Venda #{venda.id}", valor=venda.valor_total,
+                    data_vencimento=timezone.now().date(), data_pagamento=timezone.now().date(),
+                    pago=True, venda_origem=venda
                 )
                 return redirect('dashboard')
 
-    produtos = Produto.objects.filter(empresa=request.user.empresa, ativo=True)
-    clientes = Cliente.objects.filter(empresa=request.user.empresa)
-    formas_pagamento = FormaPagamento.objects.filter(empresa=request.user.empresa)
-    total = sum(item.subtotal for item in venda.itens.all())
+    template = 'core/pdv_focus.html' if request.user.cargo in ['VENDEDOR', 'CAIXA'] else 'core/pdv.html'
     
-    return render(request, 'template_name', {
+    return render(request, template, {
         'venda': venda,
-        'produtos': produtos,
-        'clientes': clientes,
-        'formas_pagamento': formas_pagamento,
-        'total': total
+        'produtos': Produto.objects.filter(empresa=request.user.empresa, ativo=True),
+        'clientes': Cliente.objects.filter(empresa=request.user.empresa),
+        'formas_pagamento': FormaPagamento.objects.filter(empresa=request.user.empresa),
+        'total': sum(item.subtotal for item in venda.itens.all())
     })
 
 @login_required
 @require_POST
 def adicionar_item(request, venda_id):
     venda = get_object_or_404(Venda, id=venda_id)
-    produto_id = request.POST.get('produto')
-    quantidade = int(request.POST.get('quantidade', 1))
-    
-    if produto_id:
-        produto = get_object_or_404(Produto, id=produto_id)
-        ItemVenda.objects.create(
-            venda=venda, produto=produto, quantidade=quantidade, 
-            preco_unitario=produto.preco_venda
-        )
+    prod_id = request.POST.get('produto')
+    qtd = int(request.POST.get('quantidade', 1))
+    if prod_id:
+        p = get_object_or_404(Produto, id=prod_id)
+        ItemVenda.objects.create(venda=venda, produto=p, quantidade=qtd, preco_unitario=p.preco_venda)
     return redirect('pdv', venda_id=venda.id)
 
 # =========================================================
-#  GESTÃO (Produtos, Clientes, Equipe, Config)
+#  GESTÃO, RELATÓRIOS E PAINEL ESTOQUE (CORRIGIDO)
 # =========================================================
 @login_required
-def lista_produtos(request):
+def painel_estoque(request):
     produtos = Produto.objects.filter(empresa=request.user.empresa)
-    return render(request, 'core/lista_produtos.html', {'produtos': produtos})
+    baixo_estoque = produtos.filter(estoque_atual__lte=F('estoque_minimo'))
+    total_custo = sum(p.estoque_atual * p.preco_custo for p in produtos)
+    total_venda = sum(p.estoque_atual * p.preco_venda for p in produtos)
+    lucro_potencial = total_venda - total_custo
+    
+    lista_inteligente = []
+    inicio_mes = timezone.now().date() - timedelta(days=30)
+    for p in produtos:
+        qtd = ItemVenda.objects.filter(produto=p, venda__status='FECHADA', venda__data_venda__date__gte=inicio_mes).aggregate(Sum('quantidade'))['quantidade__sum'] or 0
+        dias = int(p.estoque_atual / (qtd/30)) if qtd > 0 else 999
+        lista_inteligente.append({'nome': p.nome, 'atual': p.estoque_atual, 'vendidos_30d': qtd, 'dias_restantes': dias})
+    
+    lista_inteligente.sort(key=lambda x: x['dias_restantes'])
+    return render(request, 'core/painel_estoque.html', {'baixo_estoque': baixo_estoque, 'total_custo': total_custo, 'total_venda': total_venda, 'lucro_potencial': lucro_potencial, 'lista_inteligente': lista_inteligente[:10], 'total_produtos': produtos.count()})
+
+@login_required
+def lista_produtos(request):
+    return render(request, 'core/lista_produtos.html', {'produtos': Produto.objects.filter(empresa=request.user.empresa)})
 
 @login_required
 def adicionar_produto(request):
     if request.method == 'POST':
         form = ProdutoForm(request.POST, request.FILES)
         if form.is_valid():
-            produto = form.save(commit=False)
-            produto.empresa = request.user.empresa
-            produto.save()
+            p = form.save(commit=False)
+            p.empresa = request.user.empresa
+            p.save()
             messages.success(request, "✅ Produto cadastrado!")
             return redirect('lista_produtos')
         else:
-            messages.error(request, f"Erro ao cadastrar: {form.errors}")
+            messages.error(request, f"Erro: {form.errors}")
     else:
         form = ProdutoForm()
     return render(request, 'core/form_produto.html', {'form': form, 'titulo': 'Novo Produto'})
 
 @login_required
 def editar_produto(request, produto_id):
-    produto = get_object_or_404(Produto, id=produto_id, empresa=request.user.empresa)
+    p = get_object_or_404(Produto, id=produto_id, empresa=request.user.empresa)
     if request.method == 'POST':
-        form = ProdutoForm(request.POST, request.FILES, instance=produto)
+        form = ProdutoForm(request.POST, request.FILES, instance=p)
         if form.is_valid():
             form.save()
             return redirect('lista_produtos')
     else:
-        form = ProdutoForm(instance=produto)
+        form = ProdutoForm(instance=p)
     return render(request, 'core/form_produto.html', {'form': form, 'titulo': 'Editar Produto'})
 
 @login_required
 def excluir_produto(request, produto_id):
-    produto = get_object_or_404(Produto, id=produto_id, empresa=request.user.empresa)
-    produto.delete()
+    p = get_object_or_404(Produto, id=produto_id, empresa=request.user.empresa)
+    p.delete()
     return redirect('lista_produtos')
 
 @login_required
 def configuracoes(request):
-    if request.user.cargo == 'VENDEDOR': return HttpResponseForbidden("Acesso Negado")
+    if request.user.cargo == 'VENDEDOR': return HttpResponseForbidden()
     empresa = request.user.empresa
-    
     if request.method == 'POST':
         form = ConfiguracaoEmpresaForm(request.POST, request.FILES, instance=empresa)
         if form.is_valid():
             form.save()
-            # Lógica do Retorno Inteligente
-            proximo_passo = request.POST.get('next')
-            if proximo_passo == 'planos':
-                return redirect('escolher_plano')
+            if request.POST.get('next') == 'planos': return redirect('escolher_plano')
             return redirect('dashboard')
     else:
         form = ConfiguracaoEmpresaForm(instance=empresa)
     return render(request, 'core/configuracoes.html', {'form': form})
 
-# =========================================================
-#  OUTROS (Financeiro, Relatorios, Equipe, etc)
-# =========================================================
-# ... (Mantenha suas outras funções: financeiro, relatorios, lista_equipe, lista_clientes, etc.)
-# Se você já tem elas no arquivo, elas ficarão aqui. Se não tiver, me avise que colo também.
-# Para não ficar gigante, assumi que você vai manter o resto que já funcionava.
 @login_required
 def financeiro(request):
-    if request.user.cargo == 'VENDEDOR': return HttpResponseForbidden("Acesso Negado")
+    if request.user.cargo == 'VENDEDOR': return HttpResponseForbidden()
     if not request.user.empresa.tem_acesso_financeiro(): return render(request, 'core/erro_plano.html')
-    
     lancamentos = Lancamento.objects.filter(empresa=request.user.empresa).order_by('-data_vencimento')
     total_receitas = sum(l.valor for l in lancamentos if l.tipo == 'RECEITA' and l.pago)
     total_despesas = sum(l.valor for l in lancamentos if l.tipo == 'DESPESA' and l.pago)
@@ -488,12 +452,9 @@ def financeiro(request):
 @login_required
 def adicionar_despesa(request):
     if request.method == 'POST':
-        # Lógica simplificada (adicione form se quiser)
         Lancamento.objects.create(
-            empresa=request.user.empresa,
-            tipo='DESPESA',
-            titulo=request.POST.get('titulo'),
-            valor=request.POST.get('valor'),
+            empresa=request.user.empresa, tipo='DESPESA',
+            titulo=request.POST.get('titulo'), valor=request.POST.get('valor'),
             data_vencimento=request.POST.get('data_vencimento'),
             data_pagamento=request.POST.get('data_vencimento') if request.POST.get('pago') else None,
             pago=request.POST.get('pago') == 'on'
@@ -503,23 +464,36 @@ def adicionar_despesa(request):
 
 @login_required
 def relatorios(request):
-    # ... (Use a lógica completa que te passei anteriormente para relatórios)
-    return render(request, 'core/relatorios.html', {})
+    if request.user.cargo == 'VENDEDOR': return HttpResponseForbidden()
+    hoje = timezone.now().date()
+    data_ini = request.GET.get('data_ini', hoje.replace(day=1).strftime('%Y-%m-%d'))
+    data_fim = request.GET.get('data_fim', hoje.strftime('%Y-%m-%d'))
+    tipo = request.GET.get('tipo', 'vendas')
+    contexto = {'data_ini': data_ini, 'data_fim': data_fim, 'tipo': tipo}
+    if tipo == 'vendas':
+        vendas = Venda.objects.filter(empresa=request.user.empresa, status='FECHADA', data_venda__date__range=[data_ini, data_fim])
+        contexto.update({'vendas': vendas, 'total_periodo': vendas.aggregate(Sum('valor_total'))['valor_total__sum'] or 0, 'qtd_vendas': vendas.count()})
+    elif tipo == 'financeiro':
+        lancamentos = Lancamento.objects.filter(empresa=request.user.empresa, data_pagamento__range=[data_ini, data_fim], pago=True)
+        rec = lancamentos.filter(tipo='RECEITA').aggregate(Sum('valor'))['valor__sum'] or 0
+        desp = lancamentos.filter(tipo='DESPESA').aggregate(Sum('valor'))['valor__sum'] or 0
+        contexto.update({'lancamentos': lancamentos, 'total_receitas': rec, 'total_despesas': desp, 'lucro': rec - desp})
+    elif tipo == 'produtos':
+        itens = ItemVenda.objects.filter(venda__empresa=request.user.empresa, venda__status='FECHADA', venda__data_venda__date__range=[data_ini, data_fim]).values('produto__nome').annotate(qtd_vendida=Sum('quantidade'), total_vendido=Sum(F('quantidade')*F('preco_unitario'))).order_by('-qtd_vendida')
+        contexto['ranking_produtos'] = itens
+    return render(request, 'core/relatorios.html', contexto)
 
 @login_required
 def lista_equipe(request):
-    usuarios = Usuario.objects.filter(empresa=request.user.empresa)
-    return render(request, 'core/lista_equipe.html', {'usuarios': usuarios})
+    return render(request, 'core/lista_equipe.html', {'usuarios': Usuario.objects.filter(empresa=request.user.empresa)})
 
 @login_required
 def adicionar_colaborador(request):
     if request.user.cargo == 'VENDEDOR': return HttpResponseForbidden()
-    # Verificação de Plano
     empresa = request.user.empresa
     if Usuario.objects.filter(empresa=empresa).count() >= empresa.limite_usuarios():
         messages.error(request, "Limite de usuários atingido.")
         return redirect('lista_equipe')
-
     if request.method == 'POST':
         form = UsuarioForm(request.POST)
         if form.is_valid():
@@ -528,8 +502,7 @@ def adicionar_colaborador(request):
             u.set_password(form.cleaned_data.get('senha') or '123456')
             u.save()
             return redirect('lista_equipe')
-    else:
-        form = UsuarioForm()
+    else: form = UsuarioForm()
     return render(request, 'core/form_generico.html', {'form': form, 'titulo': 'Novo Colaborador'})
 
 @login_required
@@ -542,8 +515,7 @@ def editar_colaborador(request, user_id):
             if form.cleaned_data.get('senha'): u.set_password(form.cleaned_data.get('senha'))
             u.save()
             return redirect('lista_equipe')
-    else:
-        form = UsuarioForm(instance=u)
+    else: form = UsuarioForm(instance=u)
     return render(request, 'core/form_generico.html', {'form': form, 'titulo': 'Editar'})
 
 @login_required
@@ -554,8 +526,7 @@ def excluir_colaborador(request, user_id):
 
 @login_required
 def lista_clientes(request):
-    clientes = Cliente.objects.filter(empresa=request.user.empresa)
-    return render(request, 'core/lista_clientes.html', {'clientes': clientes})
+    return render(request, 'core/lista_clientes.html', {'clientes': Cliente.objects.filter(empresa=request.user.empresa)})
 
 @login_required
 def adicionar_cliente(request):
@@ -566,8 +537,7 @@ def adicionar_cliente(request):
             c.empresa = request.user.empresa
             c.save()
             return redirect('lista_clientes')
-    else:
-        form = ClienteForm()
+    else: form = ClienteForm()
     return render(request, 'core/form_generico.html', {'form': form, 'titulo': 'Novo Cliente'})
 
 @login_required
@@ -578,14 +548,12 @@ def editar_cliente(request, id):
         if form.is_valid():
             form.save()
             return redirect('lista_clientes')
-    else:
-        form = ClienteForm(instance=c)
+    else: form = ClienteForm(instance=c)
     return render(request, 'core/form_generico.html', {'form': form, 'titulo': 'Editar Cliente'})
 
 @login_required
 def lista_fornecedores(request):
-    fornecedores = Fornecedor.objects.filter(empresa=request.user.empresa)
-    return render(request, 'core/lista_fornecedores.html', {'fornecedores': fornecedores})
+    return render(request, 'core/lista_fornecedores.html', {'fornecedores': Fornecedor.objects.filter(empresa=request.user.empresa)})
 
 @login_required
 def adicionar_fornecedor(request):
@@ -596,14 +564,12 @@ def adicionar_fornecedor(request):
             f.empresa = request.user.empresa
             f.save()
             return redirect('lista_fornecedores')
-    else:
-        form = FornecedorForm()
+    else: form = FornecedorForm()
     return render(request, 'core/form_generico.html', {'form': form, 'titulo': 'Novo Fornecedor'})
 
 @login_required
 def lista_categorias(request):
-    categorias = Categoria.objects.filter(empresa=request.user.empresa)
-    return render(request, 'core/lista_categorias.html', {'categorias': categorias})
+    return render(request, 'core/lista_categorias.html', {'categorias': Categoria.objects.filter(empresa=request.user.empresa)})
 
 @login_required
 def adicionar_categoria(request):
@@ -614,58 +580,46 @@ def adicionar_categoria(request):
             c.empresa = request.user.empresa
             c.save()
             return redirect('lista_categorias')
-    else:
-        form = CategoriaForm()
+    else: form = CategoriaForm()
     return render(request, 'core/form_generico.html', {'form': form, 'titulo': 'Nova Categoria'})
 
 @login_required
 def minhas_comissoes(request):
-    # ... (Lógica das comissões)
-    return render(request, 'core/minhas_comissoes.html', {})
+    itens = ItemVenda.objects.filter(venda__empresa=request.user.empresa, venda__status='FECHADA').order_by('-venda__data_venda')
+    if request.user.cargo == 'VENDEDOR': itens = itens.filter(venda__vendedor=request.user)
+    total_comissao = sum(i.comissao_valor for i in itens)
+    total_vendido = sum(i.subtotal for i in itens)
+    return render(request, 'core/minhas_comissoes.html', {'itens': itens, 'total_comissao': total_comissao, 'total_vendido': total_vendido})
 
 @staff_member_required
 def saas_painel(request):
-    # ...
-    return render(request, 'core/saas_painel.html', {})
+    return render(request, 'core/saas_painel.html', {'empresas': Empresa.objects.all()})
 
 @staff_member_required
 def alternar_status_loja(request, empresa_id):
-    # ...
+    e = get_object_or_404(Empresa, id=empresa_id)
+    e.ativa = not e.ativa
+    e.save()
     return redirect('saas_painel')
 
 @staff_member_required
 def gerar_contrato_pdf(request, empresa_id):
-    # ...
-    return HttpResponse("PDF") # Simplificado
-
-@login_required
-def rota_inicial(request):
-    # Se for Vendedor ou Caixa, vai direto pra venda
-    if request.user.cargo in ['VENDEDOR', 'CAIXA']:
-        return redirect('criar_venda')
-
-    # Se for Gerente/Dono, vai pro Dashboard ver os gráficos
-    return redirect('dashboard')
-
-# =========================================================
-#  RELATÓRIOS E PDFS (Adicione no final do views.py)
-# =========================================================
+    empresa = get_object_or_404(Empresa, id=empresa_id)
+    contexto = {'empresa': empresa, 'data_atual': timezone.now(), 'contratada': 'NEXUM ERP LTDA', 'cnpj_contratada': '00.000.000/0001-00'}
+    html_string = render_to_string('core/contrato_saas.html', contexto)
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'inline; filename="Contrato_{empresa.nome_fantasia}.pdf"'
+    HTML(string=html_string).write_pdf(response)
+    return response
 
 @login_required
 def gerar_orcamento_pdf(request, venda_id):
     venda = get_object_or_404(Venda, id=venda_id)
-    # Recalcula total caso tenha mudado
     total = sum(item.subtotal for item in venda.itens.all())
-    
-    html_string = render_to_string('core/orcamento_pdf.html', {
-        'venda': venda, 
-        'total_calculado': total
-    })
-    
+    html_string = render_to_string('core/orcamento_pdf.html', {'venda': venda, 'total_calculado': total})
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'inline; filename="orcamento_{venda.id}.pdf"'
     HTML(string=html_string).write_pdf(response)
-    
     return response
 
 @login_required
@@ -675,5 +629,4 @@ def imprimir_cupom(request, venda_id):
 
 @login_required
 def catalogo_qr(request):
-    produtos = Produto.objects.filter(empresa=request.user.empresa)
-    return render(request, 'core/catalogo_qr.html', {'produtos': produtos})
+    return render(request, 'core/catalogo_qr.html', {'produtos': Produto.objects.filter(empresa=request.user.empresa)})
