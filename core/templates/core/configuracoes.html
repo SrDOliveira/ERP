@@ -11,6 +11,8 @@
         <div class="card-body">
             <form method="POST" enctype="multipart/form-data">
                 {% csrf_token %}
+
+                <input type="hidden" name="next" value="{{ request.GET.next }}">
                 
                 <div class="text-center mb-4">
                     <label class="form-label fw-bold">Logomarca Atual</label><br>

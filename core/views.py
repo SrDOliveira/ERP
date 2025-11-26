@@ -732,9 +732,7 @@ def relatorios(request):
 
 @login_required
 def configuracoes(request):
-    # Só Gerente/Dono pode mexer aqui
-    if request.user.cargo == 'VENDEDOR':
-        return HttpResponseForbidden("Acesso Negado")
+    if request.user.cargo == 'VENDEDOR': return HttpResponseForbidden("Acesso Negado")
 
     empresa = request.user.empresa
     
@@ -742,6 +740,13 @@ def configuracoes(request):
         form = ConfiguracaoEmpresaForm(request.POST, request.FILES, instance=empresa)
         if form.is_valid():
             form.save()
+            
+            # --- LÓGICA DO RETORNO INTELIGENTE ---
+            proximo_passo = request.POST.get('next')
+            if proximo_passo == 'planos':
+                return redirect('escolher_plano') # Volta para os planos!
+            # -------------------------------------
+            
             return redirect('dashboard')
     else:
         form = ConfiguracaoEmpresaForm(instance=empresa)
@@ -954,8 +959,9 @@ def iniciar_pagamento(request, plano):
     # Se o CNPJ ainda for o provisório (TEMP-...), manda corrigir
     if "TEMP-" in empresa.cnpj or len(empresa.cnpj) < 11:
         messages.warning(request, "⚠️ Para emitir a cobrança, precisamos do seu CPF ou CNPJ real. Por favor, atualize abaixo.")
-        return redirect('configuracoes')
-    # ----------------------------------------
+        # MUDANÇA AQUI: Adicionamos o ?next=planos
+        return redirect('/configuracoes/?next=planos')
+
 
     # 1. Define Valor
     if plano == 'ESSENCIAL': valor = 129.00
