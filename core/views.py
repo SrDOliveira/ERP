@@ -125,13 +125,12 @@ def escolher_plano(request):
     return render(request, 'core/planos.html')
 
 # =========================================================
-#  PAGAMENTOS (MODO DIAGNÓSTICO)
+#  PAGAMENTOS E ASSINATURA (ASAAS) - VERSÃO CORRIGIDA
 # =========================================================
 @login_required
 def iniciar_pagamento(request, plano):
     empresa = request.user.empresa
     
-    # Verificações Iniciais
     if "TEMP-" in empresa.cnpj or len(empresa.cnpj) < 11:
         messages.warning(request, "⚠️ Para assinar, precisamos do seu CPF/CNPJ real. Atualize abaixo.")
         return redirect('/configuracoes/?next=planos')
@@ -144,40 +143,30 @@ def iniciar_pagamento(request, plano):
         messages.error(request, "Erro: Chave de pagamento não configurada.")
         return redirect('dashboard')
 
-    headers = {
-        "Content-Type": "application/json",
-        "access_token": ASAAS_API_KEY
-    }
+    headers = {"Content-Type": "application/json", "access_token": ASAAS_API_KEY}
 
-    # 1. Garantir Cliente no Asaas
+    # 1. Cliente
     if not empresa.asaas_customer_id:
-        payload_cliente = { 
-            "name": empresa.nome_fantasia, 
-            "cpfCnpj": empresa.cnpj, 
-            "email": request.user.email 
-        }
+        payload_cliente = { "name": empresa.nome_fantasia, "cpfCnpj": empresa.cnpj, "email": request.user.email }
         try:
             res = requests.post(f"{ASAAS_URL}/customers", json=payload_cliente, headers=headers)
             if res.status_code == 200:
                 empresa.asaas_customer_id = res.json()['id']
                 empresa.save()
-            elif res.status_code == 400 and 'cpfCnpj' in res.text:
-                # Se já existe, busca pelo CPF
+            else:
+                # Tenta recuperar se já existe
                 res_busca = requests.get(f"{ASAAS_URL}/customers?cpfCnpj={empresa.cnpj}", headers=headers)
                 if res_busca.json().get('data'):
                     empresa.asaas_customer_id = res_busca.json()['data'][0]['id']
                     empresa.save()
                 else:
-                    messages.error(request, "Erro ao identificar cliente no sistema de pagamento.")
+                    messages.error(request, "Erro ao cadastrar cliente no Asaas.")
                     return redirect('dashboard')
-            else:
-                messages.error(request, "Erro ao cadastrar cliente no pagamento.")
-                return redirect('dashboard')
         except:
             messages.error(request, "Erro de conexão.")
             return redirect('dashboard')
 
-    # 2. Criar Assinatura
+    # 2. Assinatura
     payload_assinatura = {
         "customer": empresa.asaas_customer_id,
         "billingType": "UNDEFINED", 
@@ -188,41 +177,64 @@ def iniciar_pagamento(request, plano):
     }
 
     try:
-        # Tenta criar
         response = requests.post(f"{ASAAS_URL}/subscriptions", json=payload_assinatura, headers=headers)
-        sub_id = None
         
+        sub_id = None
         if response.status_code == 200:
             sub_id = response.json()['id']
-        elif 'unique' in response.text:
-            # Se já existe assinatura ativa, recupera o ID dela
+        elif 'unique' in response.text: # Já existe
             res_lista = requests.get(f"{ASAAS_URL}/subscriptions?customer={empresa.asaas_customer_id}&status=ACTIVE", headers=headers)
             if res_lista.json().get('data'):
                 sub_id = res_lista.json()['data'][0]['id']
         
         if sub_id:
-            # 3. Buscar a Fatura (O Pulo do Gato)
+            # 3. Buscar Cobrança (O Pulo do Gato)
             import time
-            time.sleep(0.5) # Pequena pausa para garantir que o Asaas gerou a fatura
-            
+            time.sleep(0.5)
             pagamentos_res = requests.get(f"{ASAAS_URL}/subscriptions/{sub_id}/payments", headers=headers)
             
             if pagamentos_res.status_code == 200:
                 lista = pagamentos_res.json().get('data', [])
                 for cobranca in lista:
                     if cobranca['status'] == 'PENDING':
-                        # SUCESSO TOTAL: Redireciona para o pagamento
-                        return redirect(cobranca['invoiceUrl'])
+                        return redirect(cobranca['invoiceUrl']) # <--- CORREÇÃO AQUI
             
             messages.warning(request, "Assinatura ativa! O boleto foi enviado para seu e-mail.")
             return redirect('dashboard')
         else:
-            messages.error(request, "Não foi possível gerar a assinatura. Tente novamente.")
+            messages.error(request, "Não foi possível gerar a assinatura.")
             return redirect('dashboard')
 
     except Exception as e:
-        messages.error(request, f"Erro técnico no pagamento: {str(e)}")
+        messages.error(request, f"Erro técnico: {str(e)}")
         return redirect('dashboard')
+
+@csrf_exempt 
+def webhook_asaas(request):
+    # ... (Mantenha a função webhook igual, ela estava correta)
+    if request.method == 'POST':
+        try:
+            dados = json.loads(request.body)
+            evento = dados.get('event')
+            payment = dados.get('payment')
+            
+            if evento in ['PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED']:
+                customer_id = payment.get('customer')
+                try:
+                    empresa = Empresa.objects.get(asaas_customer_id=customer_id)
+                    empresa.ativa = True
+                    empresa.data_vencimento = timezone.now().date() + timedelta(days=30)
+                    val = float(payment.get('value', 0))
+                    if val >= 249: empresa.plano = 'PRO'
+                    else: empresa.plano = 'ESSENCIAL'
+                    empresa.save()
+                    return JsonResponse({'status': 'ok'})
+                except Empresa.DoesNotExist:
+                    return JsonResponse({'status': '404'})
+            return JsonResponse({'status': 'ignorado'})
+        except:
+            return JsonResponse({'status': 'erro'}, status=500)
+    return HttpResponseForbidden()
 
 # =========================================================
 #  CAIXA E PDV
