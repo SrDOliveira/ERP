@@ -950,12 +950,14 @@ def cadastro_loja(request):
 def iniciar_pagamento(request, plano):
     empresa = request.user.empresa
     
-    # 1. Definir valor conforme o plano
-    if plano == 'ESSENCIAL':
-        valor = 129.00
-    elif plano == 'PRO':
-        valor = 249.00
-    else:
+    # 1. Define Valor
+    if plano == 'ESSENCIAL': valor = 129.00
+    elif plano == 'PRO': valor = 249.00
+    else: return redirect('dashboard')
+
+    # Verifica se a chave existe
+    if not ASAAS_API_KEY:
+        messages.error(request, "Erro: Chave API do Asaas não configurada no sistema.")
         return redirect('dashboard')
 
     headers = {
@@ -963,7 +965,7 @@ def iniciar_pagamento(request, plano):
         "access_token": ASAAS_API_KEY
     }
 
-    # 2. Criar/Recuperar Cliente no Asaas
+    # 2. Criar Cliente no Asaas (se não tiver)
     if not empresa.asaas_customer_id:
         payload_cliente = {
             "name": empresa.nome_fantasia,
@@ -976,16 +978,19 @@ def iniciar_pagamento(request, plano):
                 empresa.asaas_customer_id = response.json()['id']
                 empresa.save()
             else:
-                messages.error(request, f"Erro Asaas: {response.text}")
+                # AQUI: Mostra o erro real do Asaas na tela
+                erro_msg = response.json().get('errors', [{'description': 'Erro desconhecido'}])[0]['description']
+                messages.error(request, f"Asaas recusou o cliente: {erro_msg}")
+                print(f"ERRO ASAAS CLIENTE: {response.text}") # Aparece no Log do Render
                 return redirect('dashboard')
         except Exception as e:
-            messages.error(request, "Erro de conexão com pagamento.")
+            messages.error(request, f"Erro de conexão: {str(e)}")
             return redirect('dashboard')
 
-    # 3. Criar a Assinatura (Subscription)
+    # 3. Criar Cobrança
     payload_assinatura = {
         "customer": empresa.asaas_customer_id,
-        "billingType": "UNDEFINED", # Deixa o cliente escolher
+        "billingType": "UNDEFINED", 
         "value": valor,
         "nextDueDate": timezone.now().strftime('%Y-%m-%d'),
         "cycle": "MONTHLY",
@@ -997,15 +1002,18 @@ def iniciar_pagamento(request, plano):
         
         if response.status_code == 200:
             data = response.json()
-            # Redireciona para o link de pagamento
+            # SUCESSO: Redireciona para a tela de pagamento oficial
             return redirect(data['billUrl'])
         else:
-            messages.error(request, "Erro ao gerar cobrança.")
+            erro_msg = response.json().get('errors', [{'description': 'Erro desconhecido'}])[0]['description']
+            messages.error(request, f"Asaas recusou a cobrança: {erro_msg}")
+            print(f"ERRO ASAAS COBRANÇA: {response.text}")
             return redirect('dashboard')
-    except Exception:
-        messages.error(request, "Erro de conexão.")
+            
+    except Exception as e:
+        messages.error(request, f"Erro técnico: {str(e)}")
         return redirect('dashboard')
-
+    
 # --- AQUI COMEÇA A NOVA FUNÇÃO (Sem indentação, colado na margem) ---
 @csrf_exempt 
 def webhook_asaas(request):
