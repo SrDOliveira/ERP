@@ -138,84 +138,88 @@ def escolher_plano(request):
 def iniciar_pagamento(request, plano):
     empresa = request.user.empresa
     
-    # Verificação de CNPJ Real
-    if "TEMP-" in empresa.cnpj or len(empresa.cnpj) < 11:
-        messages.warning(request, "⚠️ Para emitir a cobrança, precisamos do seu CPF ou CNPJ real. Por favor, atualize abaixo.")
-        return redirect('/configuracoes/?next=planos')
-
     # Define Valor
     if plano == 'ESSENCIAL': valor = 129.00
     elif plano == 'PRO': valor = 249.00
     else: return redirect('dashboard')
 
-    # Verifica Chave API
     if not ASAAS_API_KEY:
-        messages.error(request, "Erro: Chave API do Asaas não configurada.")
+        messages.error(request, "Erro de Configuração: Chave API ausente.")
         return redirect('dashboard')
 
     headers = {"Content-Type": "application/json", "access_token": ASAAS_API_KEY}
 
-    # 1. Criar Cliente no Asaas (Se não existir)
+    # 1. Garante o Cliente
     if not empresa.asaas_customer_id:
-        payload_cliente = {
-            "name": empresa.nome_fantasia,
-            "cpfCnpj": empresa.cnpj,
-            "email": request.user.email,
-        }
+        # ... (código de criar cliente igual ao anterior) ...
+        # Se quiser, posso colar essa parte de novo, mas ela estava funcionando
+        payload_cliente = { "name": empresa.nome_fantasia, "cpfCnpj": empresa.cnpj, "email": request.user.email }
         try:
-            response = requests.post(f"{ASAAS_URL}/customers", json=payload_cliente, headers=headers)
-            if response.status_code == 200:
-                empresa.asaas_customer_id = response.json()['id']
+            res = requests.post(f"{ASAAS_URL}/customers", json=payload_cliente, headers=headers)
+            if res.status_code == 200:
+                empresa.asaas_customer_id = res.json()['id']
                 empresa.save()
             else:
-                erro_msg = response.json().get('errors', [{'description': 'Erro desconhecido'}])[0]['description']
-                messages.error(request, f"Asaas recusou o cliente: {erro_msg}")
-                return redirect('dashboard')
-        except Exception as e:
-            messages.error(request, f"Erro de conexão: {str(e)}")
+                # Se der erro (ex: já existe), tenta buscar pelo CPF/CNPJ
+                res_busca = requests.get(f"{ASAAS_URL}/customers?cpfCnpj={empresa.cnpj}", headers=headers)
+                if res_busca.status_code == 200 and res_busca.json()['data']:
+                    empresa.asaas_customer_id = res_busca.json()['data'][0]['id']
+                    empresa.save()
+                else:
+                    messages.error(request, "Erro ao cadastrar cliente no Asaas.")
+                    return redirect('dashboard')
+        except:
             return redirect('dashboard')
 
-    # 2. Criar a Assinatura
+    # 2. Cria a Assinatura
     payload_assinatura = {
         "customer": empresa.asaas_customer_id,
-        "billingType": "UNDEFINED", # Cliente escolhe como pagar (Pix/Cartão/Boleto)
+        "billingType": "UNDEFINED", 
         "value": valor,
-        "nextDueDate": timezone.now().strftime('%Y-%m-%d'), # Vence hoje
+        "nextDueDate": timezone.now().strftime('%Y-%m-%d'),
         "cycle": "MONTHLY",
         "description": f"Assinatura Nexum ERP - Plano {plano}"
     }
 
     try:
+        # Tenta criar assinatura
         response = requests.post(f"{ASAAS_URL}/subscriptions", json=payload_assinatura, headers=headers)
         
+        # Se criou (200) ou se diz que já existe (400), precisamos do ID da assinatura
+        sub_id = None
+        
         if response.status_code == 200:
-            sub_data = response.json()
-            sub_id = sub_data['id']
-            
-            # --- CORREÇÃO AQUI: Buscar a cobrança gerada para pegar o link ---
-            # A assinatura foi criada, agora pegamos a fatura dela
+            sub_id = response.json()['id']
+        else:
+            # Se der erro, vamos tentar listar as assinaturas desse cliente para achar a ativa
+            # Isso resolve se o cliente clicou duas vezes
+            res_lista = requests.get(f"{ASAAS_URL}/subscriptions?customer={empresa.asaas_customer_id}", headers=headers)
+            if res_lista.status_code == 200 and res_lista.json()['data']:
+                sub_id = res_lista.json()['data'][0]['id']
+        
+        if sub_id:
+            # 3. BUSCA O LINK DE PAGAMENTO (Onde dava erro)
+            # Pede a lista de cobranças dessa assinatura
             pagamentos_res = requests.get(f"{ASAAS_URL}/subscriptions/{sub_id}/payments", headers=headers)
             
             if pagamentos_res.status_code == 200:
-                lista_pagamentos = pagamentos_res.json().get('data', [])
-                if lista_pagamentos:
-                    # Pega o link da primeira fatura (invoiceUrl é a página de pagamento bonita do Asaas)
-                    link_pagamento = lista_pagamentos[0].get('invoiceUrl')
-                    return redirect(link_pagamento)
+                lista = pagamentos_res.json().get('data', [])
+                if lista:
+                    # Pega a primeira pendente
+                    for cobranca in lista:
+                        if cobranca['status'] == 'PENDING':
+                            return redirect(cobranca['invoiceUrl']) # <--- AQUI ESTÁ O LINK CERTO
             
-            # Caso não ache o link (raro), avisa que foi por email
-            messages.success(request, "Assinatura criada! O link de pagamento foi enviado para seu e-mail.")
+            messages.warning(request, "Assinatura ativa, mas boleto ainda não gerado. Verifique seu e-mail.")
             return redirect('dashboard')
             
         else:
-            erro_msg = response.json().get('errors', [{'description': 'Erro desconhecido'}])[0]['description']
-            # Se der erro de "Já existe assinatura", tenta recuperar a existente? 
-            # Por enquanto apenas avisa:
-            messages.error(request, f"Erro na assinatura: {erro_msg}")
+            messages.error(request, f"Erro ao criar assinatura: {response.text}")
             return redirect('dashboard')
-            
+
     except Exception as e:
-        messages.error(request, f"Erro técnico: {str(e)}")
+        messages.error(request, f"Erro técnico no pagamento: {str(e)}")
+        print(f"ERRO CRÍTICO: {e}") # Veja isso nos logs do Render
         return redirect('dashboard')
     
 @csrf_exempt 

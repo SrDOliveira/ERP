@@ -51,14 +51,14 @@ AUTH_USER_MODEL = 'core.Usuario'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # <--- AQUI É O LUGAR CERTO (2ª Posição)
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'core.middleware.SaasSecurityMiddleware', # <--- ADICIONE ESTA LINHA
-    'whitenoise.middleware.WhiteNoiseMiddleware', # <--- ADICIONE AQUI
+    'core.middleware.SaasSecurityMiddleware', # <--- Seu middleware de bloqueio fica no final
 ]
 
 ROOT_URLCONF = 'config.urls'
