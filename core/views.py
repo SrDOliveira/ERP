@@ -18,7 +18,6 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
-
 from weasyprint import HTML
 
 # --- MODELOS E FORMS ---
@@ -642,3 +641,34 @@ def rota_inicial(request):
 
     # Se for Gerente/Dono, vai pro Dashboard ver os gráficos
     return redirect('dashboard')
+
+# =========================================================
+#  RELATÓRIOS E PDFS (Adicione no final do views.py)
+# =========================================================
+
+@login_required
+def gerar_orcamento_pdf(request, venda_id):
+    venda = get_object_or_404(Venda, id=venda_id)
+    # Recalcula total caso tenha mudado
+    total = sum(item.subtotal for item in venda.itens.all())
+    
+    html_string = render_to_string('core/orcamento_pdf.html', {
+        'venda': venda, 
+        'total_calculado': total
+    })
+    
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'inline; filename="orcamento_{venda.id}.pdf"'
+    HTML(string=html_string).write_pdf(response)
+    
+    return response
+
+@login_required
+def imprimir_cupom(request, venda_id):
+    venda = get_object_or_404(Venda, id=venda_id, empresa=request.user.empresa)
+    return render(request, 'core/cupom.html', {'venda': venda})
+
+@login_required
+def catalogo_qr(request):
+    produtos = Produto.objects.filter(empresa=request.user.empresa)
+    return render(request, 'core/catalogo_qr.html', {'produtos': produtos})
