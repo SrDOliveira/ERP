@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
 from django.contrib.auth import views as auth_views
+from .views import CustomLoginView # Adicione junto com os outros imports
 
 urlpatterns = [
     path('', views.dashboard, name='dashboard'),
@@ -12,7 +13,7 @@ urlpatterns = [
     path('financeiro/nova-despesa/', views.adicionar_despesa, name='adicionar_despesa'),
     path('saas-admin/', views.saas_painel, name='saas_painel'),
     path('saas-admin/bloquear/<int:empresa_id>/', views.alternar_status_loja, name='alternar_status_loja'),
-    path('login/', auth_views.LoginView.as_view(template_name='core/login.html'), name='login'),
+    path('login/', CustomLoginView.as_view(), name='login'),    
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('produtos/', views.lista_produtos, name='lista_produtos'),
     path('produtos/novo/', views.adicionar_produto, name='adicionar_produto'),

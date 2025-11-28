@@ -4,3 +4,11 @@ __pycache__/
 db.sqlite3
 media/
 .env
+
+# Ignorar executáveis e builds
+*.exe
+*.zip
+NexumERP-*/
+desktop.css
+logo.ico
+logo.png

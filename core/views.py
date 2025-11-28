@@ -623,3 +623,27 @@ def imprimir_cupom(request, venda_id):
 @login_required
 def catalogo_qr(request):
     return render(request, 'core/catalogo_qr.html', {'produtos': Produto.objects.filter(empresa=request.user.empresa)})
+
+# Adicione este import no topo
+from django.contrib.auth.views import LoginView
+
+# ... (outras views)
+
+class CustomLoginView(LoginView):
+    template_name = 'core/login.html'
+    
+    def form_valid(self, form):
+        # Chama a lógica padrão de login
+        result = super().form_valid(form)
+        
+        # Verifica se marcou a caixinha
+        remember_me = self.request.POST.get('remember_me')
+        
+        if remember_me:
+            # Se marcou: Sessão dura 2 semanas (padrão Django) ou o que estiver no settings
+            self.request.session.set_expiry(1209600) # 2 semanas em segundos
+        else:
+            # Se NÃO marcou: Sessão expira ao fechar o navegador
+            self.request.session.set_expiry(0)
+            
+        return result
