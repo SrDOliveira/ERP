@@ -2,8 +2,11 @@ from django.urls import path
 from . import views
 from django.contrib.auth import views as auth_views
 from .views import CustomLoginView # Adicione junto com os outros imports
+from .views import ServiceWorkerView, ManifestView
 
 urlpatterns = [
+    path('sw.js', ServiceWorkerView.as_view(), name='sw.js'),
+    path('manifest.json', ManifestView.as_view(), name='manifest.json'),
     path('', views.dashboard, name='dashboard'),
     path('nova-venda/', views.criar_venda, name='criar_venda'),  # <--- O erro diz que esta linha não existe
     path('pdv/<int:venda_id>/', views.pdv, name='pdv'),

@@ -647,3 +647,16 @@ class CustomLoginView(LoginView):
             self.request.session.set_expiry(0)
             
         return result
+    
+    # Servir arquivos de PWA
+from django.views.generic import TemplateView
+
+class ServiceWorkerView(TemplateView):
+    template_name = "core/sw.js"
+    content_type = "application/javascript"
+    name = "sw.js"
+
+class ManifestView(TemplateView):
+    template_name = "core/manifest.json" # Vamos criar um template pra ele tbm pra facilitar
+    content_type = "application/json"
+    name = "manifest.json"
