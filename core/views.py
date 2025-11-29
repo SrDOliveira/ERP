@@ -5,6 +5,10 @@ import uuid
 import requests
 import json
 import traceback # Importante para o erro
+
+    # Servir arquivos de PWA
+from django.views.generic import TemplateView
+
 from datetime import timedelta
 
 from django.contrib import messages
@@ -648,9 +652,6 @@ class CustomLoginView(LoginView):
             
         return result
     
-    # Servir arquivos de PWA
-from django.views.generic import TemplateView
-
 class ServiceWorkerView(TemplateView):
     template_name = "core/sw.js"
     content_type = "application/javascript"
@@ -658,5 +659,18 @@ class ServiceWorkerView(TemplateView):
 
 class ManifestView(TemplateView):
     template_name = "core/manifest.json" # Vamos criar um template pra ele tbm pra facilitar
+    content_type = "application/json"
+    name = "manifest.json"
+
+    # =========================================================
+#  PWA (ANDROID APP)
+# =========================================================
+class ServiceWorkerView(TemplateView):
+    template_name = "core/sw.js"
+    content_type = "application/javascript"
+    name = "sw.js"
+
+class ManifestView(TemplateView):
+    template_name = "core/manifest.json"
     content_type = "application/json"
     name = "manifest.json"

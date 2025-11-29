@@ -1,8 +1,9 @@
 from django.urls import path
 from . import views
+from .views import ServiceWorkerView, ManifestView
 from django.contrib.auth import views as auth_views
 from .views import CustomLoginView # Adicione junto com os outros imports
-from .views import ServiceWorkerView, ManifestView
+
 
 urlpatterns = [
     path('sw.js', ServiceWorkerView.as_view(), name='sw.js'),
