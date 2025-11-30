@@ -1,0 +1,48 @@
+{% extends 'core/base.html' %}
+{% block title %}Responder Chamado{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 800px;">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3>Atendimento ao Cliente</h3>
+        <a href="{% url 'saas_painel' %}" class="btn btn-outline-secondary">Voltar</a>
+    </div>
+
+    <div class="card mb-4 border-primary">
+        <div class="card-header bg-primary text-white d-flex justify-content-between">
+            <span>{{ chamado.get_tipo_display }}: <strong>{{ chamado.assunto }}</strong></span>
+            <small>{{ chamado.data_abertura|date:"d/m/Y H:i" }}</small>
+        </div>
+        <div class="card-body">
+            <h6 class="card-subtitle mb-2 text-muted">
+                De: {{ chamado.usuario.first_name }} ({{ chamado.usuario.empresa.nome_fantasia }})
+            </h6>
+            <p class="card-text bg-light p-3 rounded">{{ chamado.mensagem }}</p>
+            
+            {% if chamado.anexo %}
+                <hr>
+                <a href="{{ chamado.anexo.url }}" target="_blank" class="btn btn-sm btn-outline-dark">
+                    <i class="bi bi-paperclip"></i> Ver Anexo
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card shadow">
+        <div class="card-header bg-white fw-bold">Sua Resposta</div>
+        <div class="card-body">
+            <form method="POST">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <textarea name="resposta" class="form-control" rows="5" placeholder="Digite a solução aqui..." required>{{ chamado.resposta_admin|default:'' }}</textarea>
+                </div>
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-success btn-lg">
+                        <i class="bi bi-send-fill"></i> Enviar Resposta e Finalizar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -25,6 +25,7 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
+from .models import Chamado # Garanta que importou Chamado
 
 from weasyprint import HTML
 
@@ -593,14 +594,37 @@ def minhas_comissoes(request):
 
 @staff_member_required
 def saas_painel(request):
-    return render(request, 'core/saas_painel.html', {'empresas': Empresa.objects.all()})
+    empresas = Empresa.objects.all().order_by('-data_criacao')
+    
+    # Busca chamados (Ordena: Abertos primeiro, depois os mais novos)
+    chamados = Chamado.objects.all().order_by('status', '-data_abertura')
+    
+    total_lojas = empresas.count()
+    lojas_ativas = empresas.filter(ativa=True).count()
+    chamados_abertos = chamados.filter(status='ABERTO').count()
+    
+    return render(request, 'core/saas_painel.html', {
+        'empresas': empresas,
+        'chamados': chamados, # Enviando a lista para o HTML
+        'total_lojas': total_lojas,
+        'lojas_ativas': lojas_ativas,
+        'chamados_abertos': chamados_abertos
+    })
 
 @staff_member_required
-def alternar_status_loja(request, empresa_id):
-    e = get_object_or_404(Empresa, id=empresa_id)
-    e.ativa = not e.ativa
-    e.save()
-    return redirect('saas_painel')
+def responder_chamado(request, chamado_id):
+    chamado = get_object_or_404(Chamado, id=chamado_id)
+    
+    if request.method == 'POST':
+        resposta = request.POST.get('resposta')
+        if resposta:
+            chamado.resposta_admin = resposta
+            chamado.status = 'RESOLVIDO'
+            chamado.save()
+            messages.success(request, f"Chamado #{chamado.id} respondido com sucesso!")
+            return redirect('saas_painel')
+            
+    return render(request, 'core/form_responder_chamado.html', {'chamado': chamado})
 
 @staff_member_required
 def gerar_contrato_pdf(request, empresa_id):

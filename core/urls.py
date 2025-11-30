@@ -61,4 +61,5 @@ urlpatterns = [
     path('inicio/', views.rota_inicial, name='rota_inicial'),
     path('suporte/', views.suporte, name='suporte'),
     path('estoque/ajuste/', views.ajuste_estoque, name='ajuste_estoque'),
+    path('saas-admin/responder/<int:chamado_id>/', views.responder_chamado, name='responder_chamado'),
 ]
