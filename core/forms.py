@@ -1,7 +1,35 @@
+from .models import Chamado, AjusteEstoque # Importe os novos models
 from django import forms
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
 from .models import Produto, MovimentoCaixa, Usuario, Caixa, Empresa, Categoria, Fornecedor, Cliente
+
+
+class ChamadoForm(forms.ModelForm):
+    class Meta:
+        model = Chamado
+        fields = ['tipo', 'assunto', 'mensagem', 'anexo']
+        widgets = {
+            'tipo': forms.Select(attrs={'class': 'form-select'}),
+            'assunto': forms.TextInput(attrs={'class': 'form-control'}),
+            'mensagem': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
+            'anexo': forms.FileInput(attrs={'class': 'form-control'}),
+        }
+
+class AjusteEstoqueForm(forms.ModelForm):
+    class Meta:
+        model = AjusteEstoque
+        fields = ['produto', 'quantidade', 'motivo', 'observacao']
+        widgets = {
+            'produto': forms.Select(attrs={'class': 'form-select'}),
+            'quantidade': forms.NumberInput(attrs={'class': 'form-control'}),
+            'motivo': forms.Select(attrs={'class': 'form-select'}),
+            'observacao': forms.TextInput(attrs={'class': 'form-control'}),
+        }
+    
+    def __init__(self, user, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['produto'].queryset = Produto.objects.filter(empresa=user.empresa)
 
 # ... (aqui começam as classes ProdutoForm, etc)
 

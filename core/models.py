@@ -260,3 +260,58 @@ class Lancamento(ModeloDoTenant):
     
     class Meta:
         ordering = ['data_vencimento']
+    
+    # =========================================================
+#  8. SUPORTE E AJUSTES (NOVOS)
+# =========================================================
+
+class Chamado(models.Model):
+    TIPO_CHOICES = (
+        ('DUVIDA', 'Dúvida'),
+        ('PROBLEMA', 'Problema / Erro'),
+        ('SUGESTAO', 'Sugestão de Melhoria'),
+        ('FINANCEIRO', 'Assunto Financeiro'),
+    )
+    STATUS_CHOICES = (
+        ('ABERTO', 'Aberto'),
+        ('EM_ANDAMENTO', 'Em Análise'),
+        ('RESOLVIDO', 'Resolvido'),
+    )
+    
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES)
+    assunto = models.CharField(max_length=200)
+    mensagem = models.TextField()
+    anexo = models.FileField(upload_to='suporte/', null=True, blank=True)
+    
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ABERTO')
+    data_abertura = models.DateTimeField(auto_now_add=True)
+    resposta_admin = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.get_tipo_display()} - {self.assunto}"
+
+class AjusteEstoque(ModeloDoTenant):
+    MOTIVO_CHOICES = (
+        ('DEFEITO', 'Defeito / Avaria'),
+        ('PERDA', 'Perda / Roubo'),
+        ('VALIDADE', 'Vencimento'),
+        ('USO_INTERNO', 'Uso Interno / Consumo'),
+        ('ENTRADA', 'Entrada Avulsa / Correção'),
+    )
+    
+    produto = models.ForeignKey(Produto, on_delete=models.CASCADE)
+    quantidade = models.IntegerField() # Pode ser negativo (saída) ou positivo (entrada)
+    motivo = models.CharField(max_length=20, choices=MOTIVO_CHOICES)
+    observacao = models.TextField(blank=True, null=True)
+    data_ajuste = models.DateTimeField(auto_now_add=True)
+    responsavel = models.ForeignKey(Usuario, on_delete=models.PROTECT)
+
+    def __str__(self):
+        return f"{self.produto.nome} ({self.quantidade})"
+    
+    def save(self, *args, **kwargs):
+        # Atualiza o estoque do produto automaticamente
+        # Se for perda (ex: defeito), a quantidade deve entrar negativa no form? 
+        # Vamos tratar na View: se o motivo não for ENTRADA, subtrai.
+        super().save(*args, **kwargs)

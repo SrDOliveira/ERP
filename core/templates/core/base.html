@@ -43,11 +43,18 @@
 
             {% if user.cargo != 'VENDEDOR' %}
                 <p class="text-uppercase">Gestão</p>
-                <a href="{% url 'financeiro' %}"><i class="bi bi-bank"></i> Financeiro</a>
+                <a href="{% url 'financeiro' %}"><i class="bi bi-bank"></i> Contabilidade</a>
                 <a href="{% url 'relatorios' %}"><i class="bi bi-file-bar-graph"></i> Relatórios</a>
                 <a href="{% url 'painel_estoque' %}"><i class="bi bi-clipboard-data"></i> Estoque</a>
                 <a href="{% url 'lista_equipe' %}"><i class="bi bi-shield-lock"></i> Acessos</a>
                 <a href="{% url 'configuracoes' %}"><i class="bi bi-sliders"></i> Ajustes</a>
+            {% endif %}
+                <a href="{% url 'suporte' %}" class="text-primary fw-bold" style="background: #ebf5ff;">
+                <i class="bi bi-chat-left-heart-fill"></i> Falar com a Nova
+            </a>
+            
+            {% if user.cargo != 'VENDEDOR' %}
+                <a href="{% url 'ajuste_estoque' %}"><i class="bi bi-clipboard-x"></i> Baixas e Perdas</a>
             {% endif %}
         </nav>
 

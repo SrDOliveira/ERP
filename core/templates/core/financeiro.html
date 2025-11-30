@@ -1,94 +1,106 @@
 {% extends 'core/base.html' %}
 
 {% block title %}Financeiro{% endblock %}
+{% block breadcrumb %}Gestão / Financeiro{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    
-    <div class="row mb-4">
-        <div class="col-md-8">
-            <h3>Fluxo de Caixa</h3>
-        </div>
-        <div class="col-md-4 text-end">
-            <a href="{% url 'adicionar_despesa' %}" class="btn btn-danger">
-                <i class="bi bi-dash-circle"></i> Nova Despesa
-            </a>
-        </div>
+<div class="container-fluid p-0">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="page-title mb-0">Controle Financeiro</h3>
+        <a href="{% url 'adicionar_despesa' %}" class="btn btn-dark btn-sm">
+            <i class="bi bi-plus-lg me-2"></i> Lançar Despesa
+        </a>
     </div>
 
-    <div class="row mb-4">
+    <div class="row g-3 mb-4">
         <div class="col-md-4">
-            <div class="card bg-success text-white">
+            <div class="card h-100">
                 <div class="card-body">
-                    <h6 class="card-title">Receitas (Pagas)</h6>
-                    <h3>R$ {{ total_receitas }}</h3>
+                    <small class="text-muted text-uppercase fw-bold">Saldo do Mês</small>
+                    <h3 class="fw-bold {% if saldo >= 0 %}text-success{% else %}text-danger{% endif %} mb-0">
+                        R$ {{ saldo|floatformat:2 }}
+                    </h3>
                 </div>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card bg-danger text-white">
+            <div class="card h-100">
                 <div class="card-body">
-                    <h6 class="card-title">Despesas (Pagas)</h6>
-                    <h3>R$ {{ total_despesas }}</h3>
+                    <small class="text-muted text-uppercase fw-bold">Entradas (Receitas)</small>
+                    <h4 class="fw-bold text-success mb-0"><i class="bi bi-arrow-up"></i> R$ {{ total_receitas|floatformat:2 }}</h4>
                 </div>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card {% if saldo >= 0 %}bg-primary{% else %}bg-warning{% endif %} text-white">
+            <div class="card h-100">
                 <div class="card-body">
-                    <h6 class="card-title">Saldo Atual</h6>
-                    <h3>R$ {{ saldo }}</h3>
+                    <small class="text-muted text-uppercase fw-bold">Saídas (Despesas)</small>
+                    <h4 class="fw-bold text-danger mb-0"><i class="bi bi-arrow-down"></i> R$ {{ total_despesas|floatformat:2 }}</h4>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="card shadow-sm">
-        <div class="card-body">
-            <table class="table table-hover">
-                <thead>
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Movimentações</span>
+            <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-secondary active">Todos</button>
+                <button class="btn btn-outline-secondary">A Receber</button>
+                <button class="btn btn-outline-secondary">A Pagar</button>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
                     <tr>
                         <th>Vencimento</th>
                         <th>Descrição</th>
-                        <th>Tipo</th>
+                        <th>Categoria</th>
                         <th>Valor</th>
                         <th>Status</th>
+                        <th class="text-end">Ação</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for l in lancamentos %}
                     <tr>
-                        <td>{{ l.data_vencimento|date:"d/m/Y" }}</td>
                         <td>
-                            {{ l.titulo }}
+                            <div class="fw-bold">{{ l.data_vencimento|date:"d/m/Y" }}</div>
+                            <small class="text-muted">{% if l.data_pagamento %}Pg: {{ l.data_pagamento|date:"d/m" }}{% endif %}</small>
+                        </td>
+                        <td>
+                            <span class="fw-bold text-dark">{{ l.titulo }}</span>
                             {% if l.venda_origem %}
-                                <a href="{% url 'gerar_orcamento_pdf' l.venda_origem.id %}" target="_blank" class="text-decoration-none ms-2">
-                                    <i class="bi bi-file-pdf text-danger"></i>
-                                </a>
+                                <a href="#" class="text-decoration-none small text-muted ms-2"><i class="bi bi-link"></i> Venda #{{ l.venda_origem.id }}</a>
                             {% endif %}
                         </td>
                         <td>
                             {% if l.tipo == 'RECEITA' %}
-                                <span class="text-success fw-bold"><i class="bi bi-arrow-up"></i> Receita</span>
+                                <span class="badge bg-success bg-opacity-10 text-success border border-success">Entrada</span>
                             {% else %}
-                                <span class="text-danger fw-bold"><i class="bi bi-arrow-down"></i> Despesa</span>
+                                <span class="badge bg-danger bg-opacity-10 text-danger border border-danger">Saída</span>
                             {% endif %}
                         </td>
-                        <td class="{% if l.tipo == 'RECEITA' %}text-success{% else %}text-danger{% endif %} fw-bold">
+                        <td class="fw-bold {% if l.tipo == 'RECEITA' %}text-success{% else %}text-danger{% endif %}">
                             R$ {{ l.valor }}
                         </td>
                         <td>
                             {% if l.pago %}
-                                <span class="badge bg-success">PAGO</span>
+                                <span class="text-success small fw-bold"><i class="bi bi-check-circle-fill"></i> PAGO</span>
                             {% else %}
-                                <span class="badge bg-warning text-dark">PENDENTE</span>
+                                {% if l.data_vencimento < today %} <span class="badge bg-danger">VENCIDO</span>
+                                {% else %}
+                                    <span class="badge bg-warning text-dark">PENDENTE</span>
+                                {% endif %}
                             {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-light border"><i class="bi bi-pencil"></i></button>
                         </td>
                     </tr>
                     {% empty %}
-                    <tr>
-                        <td colspan="5" class="text-center text-muted py-4">Nenhum lançamento financeiro encontrado.</td>
-                    </tr>
+                    <tr><td colspan="6" class="text-center p-4 text-muted">Nenhum lançamento no período.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>

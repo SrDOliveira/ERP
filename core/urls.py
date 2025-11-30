@@ -59,4 +59,6 @@ urlpatterns = [
     path('webhook/asaas/', views.webhook_asaas, name='webhook_asaas'),
     path('assinatura/planos/', views.escolher_plano, name='escolher_plano'),
     path('inicio/', views.rota_inicial, name='rota_inicial'),
+    path('suporte/', views.suporte, name='suporte'),
+    path('estoque/ajuste/', views.ajuste_estoque, name='ajuste_estoque'),
 ]

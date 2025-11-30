@@ -6,6 +6,9 @@ import requests
 import json
 import traceback # Importante para o erro
 
+# Imports dos novos forms e models
+from .models import Chamado, AjusteEstoque
+from .forms import ChamadoForm, AjusteEstoqueForm
     # Servir arquivos de PWA
 from django.views.generic import TemplateView
 
@@ -674,3 +677,57 @@ class ManifestView(TemplateView):
     template_name = "core/manifest.json"
     content_type = "application/json"
     name = "manifest.json"
+
+
+# --- SUPORTE ---
+@login_required
+def suporte(request):
+    chamados = Chamado.objects.filter(usuario=request.user).order_by('-data_abertura')
+    
+    if request.method == 'POST':
+        form = ChamadoForm(request.POST, request.FILES)
+        if form.is_valid():
+            chamado = form.save(commit=False)
+            chamado.usuario = request.user
+            chamado.save()
+            messages.success(request, "Chamado aberto! Responderemos em breve.")
+            return redirect('suporte')
+    else:
+        form = ChamadoForm()
+        
+    return render(request, 'core/suporte.html', {'form': form, 'chamados': chamados})
+
+# --- GESTÃO DE PERDAS / AJUSTES ---
+@login_required
+def ajuste_estoque(request):
+    if request.user.cargo == 'VENDEDOR': return HttpResponseForbidden()
+    
+    ajustes = AjusteEstoque.objects.filter(empresa=request.user.empresa).order_by('-data_ajuste')[:20]
+    
+    if request.method == 'POST':
+        form = AjusteEstoqueForm(request.user, request.POST)
+        if form.is_valid():
+            ajuste = form.save(commit=False)
+            ajuste.empresa = request.user.empresa
+            ajuste.responsavel = request.user
+            
+            # Lógica do Estoque:
+            # Se for ENTRADA, soma. Se for qualquer outro motivo (Perda, Defeito), subtrai.
+            prod = ajuste.produto
+            qtd = abs(ajuste.quantidade) # Garante número positivo pra lógica
+            
+            if ajuste.motivo == 'ENTRADA':
+                prod.estoque_atual += qtd
+                msg = f"Adicionado {qtd} ao estoque."
+            else:
+                prod.estoque_atual -= qtd
+                msg = f"Removido {qtd} do estoque."
+            
+            prod.save()
+            ajuste.save()
+            messages.success(request, msg)
+            return redirect('ajuste_estoque')
+    else:
+        form = AjusteEstoqueForm(request.user)
+        
+    return render(request, 'core/ajuste_estoque.html', {'form': form, 'ajustes': ajustes})

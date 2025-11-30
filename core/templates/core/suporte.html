@@ -1,0 +1,79 @@
+{% extends 'core/base.html' %}
+{% block title %}Fale com a Nova{% endblock %}
+{% block breadcrumb %}Suporte{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-header">Abrir Novo Chamado</div>
+                <div class="card-body">
+                    <p class="text-muted small mb-4">Tem alguma dúvida, encontrou um erro ou quer sugerir uma melhoria? Mande pra gente!</p>
+                    <form method="POST" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Tipo</label>
+                            {{ form.tipo }}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Assunto</label>
+                            {{ form.assunto }}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Mensagem</label>
+                            {{ form.mensagem }}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Anexo (Print/Foto)</label>
+                            {{ form.anexo }}
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-dark">Enviar Chamado</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card h-100">
+                <div class="card-header">Meus Chamados</div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% for c in chamados %}
+                        <div class="list-group-item p-3">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1 fw-bold">{{ c.get_tipo_display }}: {{ c.assunto }}</h6>
+                                <small class="text-muted">{{ c.data_abertura|date:"d/m/Y H:i" }}</small>
+                            </div>
+                            <p class="mb-1 text-muted small">{{ c.mensagem|truncatechars:100 }}</p>
+                            <div class="mt-2">
+                                {% if c.status == 'ABERTO' %}
+                                    <span class="badge bg-warning text-dark">Aberto</span>
+                                {% elif c.status == 'EM_ANDAMENTO' %}
+                                    <span class="badge bg-info">Em Análise</span>
+                                {% else %}
+                                    <span class="badge bg-success">Resolvido</span>
+                                {% endif %}
+                                
+                                {% if c.resposta_admin %}
+                                    <div class="alert alert-light border mt-2 mb-0 small">
+                                        <strong>Resposta Nova Codium:</strong> {{ c.resposta_admin }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="text-center p-5 text-muted">
+                            <i class="bi bi-chat-heart fs-1"></i><br>
+                            Nenhum chamado aberto.
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
