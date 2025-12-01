@@ -442,14 +442,15 @@ def configuracoes(request):
 
 @login_required
 def financeiro(request):
-    if request.user.cargo == 'VENDEDOR': return HttpResponseForbidden()
-    if not request.user.empresa.tem_acesso_financeiro(): return render(request, 'core/erro_plano.html')
-    lancamentos = Lancamento.objects.filter(empresa=request.user.empresa).order_by('-data_vencimento')
-    total_receitas = sum(l.valor for l in lancamentos if l.tipo == 'RECEITA' and l.pago)
-    total_despesas = sum(l.valor for l in lancamentos if l.tipo == 'DESPESA' and l.pago)
-    saldo = total_receitas - total_despesas
-    return render(request, 'core/financeiro.html', locals())
-
+    # Vendedor continua bloqueado
+    if request.user.cargo == 'VENDEDOR': return HttpResponseForbidden("Acesso Negado")
+    
+    # MUDANÇA AQUI:
+    # Se NÃO for Superusuário E a empresa NÃO tiver acesso, aí sim bloqueia.
+    # (Ou seja: Se for superusuário, ele pula esse if e entra)
+    if not request.user.is_superuser and not request.user.empresa.tem_acesso_financeiro(): 
+        return render(request, 'core/erro_plano.html')
+    
 @login_required
 def adicionar_despesa(request):
     if request.method == 'POST':
@@ -466,6 +467,10 @@ def adicionar_despesa(request):
 @login_required
 def relatorios(request):
     if request.user.cargo == 'VENDEDOR': return HttpResponseForbidden()
+    
+    # ADICIONE A MESMA TRAVA INTELIGENTE AQUI:
+    if not request.user.is_superuser and not request.user.empresa.tem_acesso_financeiro():
+        return render(request, 'core/erro_plano.html')
     hoje = timezone.now().date()
     data_ini = request.GET.get('data_ini', hoje.replace(day=1).strftime('%Y-%m-%d'))
     data_fim = request.GET.get('data_fim', hoje.strftime('%Y-%m-%d'))

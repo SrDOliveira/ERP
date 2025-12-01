@@ -56,8 +56,21 @@ class Empresa(models.Model):
         return 999 # Expansão ilimitado
 
     def tem_acesso_financeiro(self):
-        # Essencial Não tem financeiro completo, só Pro e Expansão
-        return self.plano in ['PRO', 'EXPANSAO']    # Campos de Personalização (Logo e Fiscal)
+        # Regra 1: Planos Pagos Superiores têm acesso sempre
+        if self.plano in ['PRO', 'EXPANSAO']:
+            return True
+            
+        # Regra 2: Período de Teste (Degustação)
+        # Se a loja tem menos de 7 dias de vida, libera tudo!
+        from django.utils import timezone
+        agora = timezone.now()
+        
+        # Calcula a diferença de dias desde a criação
+        if (agora - self.data_criacao).days <= 7:
+            return True
+            
+        # Se não for PRO e já passou do teste, bloqueia
+        return False
     
     logo = models.ImageField(upload_to='logos_empresas/', null=True, blank=True)
     mensagem_cupom = models.CharField(max_length=200, default="Obrigado pela preferência!", blank=True)
