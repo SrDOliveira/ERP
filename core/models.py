@@ -55,21 +55,23 @@ class Empresa(models.Model):
         if self.plano == 'PRO': return 10
         return 999 # Expansão ilimitado
 
+    # Em core/models.py, dentro da class Empresa:
+
     def tem_acesso_financeiro(self):
-        # Regra 1: Planos Pagos Superiores têm acesso sempre
+        # 1. Se o plano for PRO ou EXPANSAO, libera sempre
         if self.plano in ['PRO', 'EXPANSAO']:
             return True
             
-        # Regra 2: Período de Teste (Degustação)
-        # Se a loja tem menos de 7 dias de vida, libera tudo!
+        # 2. Se estiver no Período de Teste (baseado na data de vencimento)
+        # Se a data de vencimento for futura ou hoje, e o plano for ESSENCIAL (trial), libera.
+        # Assumimos que no trial o plano fica como ESSENCIAL mas a data é curta.
         from django.utils import timezone
-        agora = timezone.now()
+        hoje = timezone.now().date()
         
-        # Calcula a diferença de dias desde a criação
-        if (agora - self.data_criacao).days <= 7:
+        # Se tiver data de vencimento e ela ainda não passou, libera como "degustação"
+        if self.data_vencimento and self.data_vencimento >= hoje:
             return True
             
-        # Se não for PRO e já passou do teste, bloqueia
         return False
     
     logo = models.ImageField(upload_to='logos_empresas/', null=True, blank=True)

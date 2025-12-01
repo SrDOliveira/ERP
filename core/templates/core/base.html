@@ -84,11 +84,20 @@
             </div>
             
             <div class="d-flex gap-3">
-                {% if user.empresa.dias_restantes <= 5 %}
+                {% if user.empresa.dias_restantes <= 30 %}
                     <a href="{% url 'escolher_plano' %}" class="btn btn-sm btn-warning fw-bold" style="font-size: 0.75rem;">
-                        <i class="bi bi-clock"></i> Teste vence em {{ user.empresa.dias_restantes }} dias
+                        <i class="bi bi-clock"></i> 
+                        
+                        {% if user.empresa.dias_restantes > 0 %}
+                            Teste acaba em {{ user.empresa.dias_restantes }} dias
+                        {% elif user.empresa.dias_restantes == 0 %}
+                            Teste acaba HOJE
+                        {% else %}
+                            Teste EXPIRADO
+                        {% endif %}
                     </a>
                 {% endif %}
+                
                 <button class="btn btn-sm btn-light border"><i class="bi bi-bell"></i></button>
             </div>
         </nav>
