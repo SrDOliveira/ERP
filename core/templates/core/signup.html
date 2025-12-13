@@ -26,6 +26,16 @@
             font-size: 18px; font-weight: bold; transition: 0.3s;
         }
         .btn-login:hover { background: #0052CC; transform: translateY(-2px); }
+        
+        /* Ajuste para o select ficar bonito igual aos inputs */
+        select.form-select {
+            padding: 10px;
+            border-radius: 8px;
+        }
+        input.form-control {
+            padding: 10px;
+            border-radius: 8px;
+        }
     </style>
 </head>
 <body>
@@ -37,7 +47,10 @@
     </div>
     
     {% if form.errors %}
-        <div class="alert alert-danger">Verifique os dados e tente novamente.</div>
+        <div class="alert alert-danger text-center">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            Verifique os dados abaixo e tente novamente.
+            </div>
     {% endif %}
 
     <form method="POST">
@@ -48,6 +61,14 @@
             {{ form.nome_loja }}
         </div>
 
+        <div class="mb-3">
+            <label class="fw-bold small text-primary">QUAL SEU SEGMENTO?</label>
+            {{ form.ramo }}
+            <div class="form-text" style="font-size: 12px;">Isso personaliza as categorias para você.</div>
+        </div>
+
+        <hr class="text-muted opacity-25 my-4">
+
         <div class="row">
             <div class="col-md-6 mb-3">
                 <label class="fw-bold small text-muted">SEU NOME</label>
@@ -56,7 +77,9 @@
             <div class="col-md-6 mb-3">
                 <label class="fw-bold small text-muted">USUÁRIO (LOGIN)</label>
                 {{ form.username }}
-                {% if form.username.errors %}<small class="text-danger">{{ form.username.errors }}</small>{% endif %}
+                {% if form.username.errors %}
+                    <div class="text-danger small mt-1">{{ form.username.errors.0 }}</div>
+                {% endif %}
             </div>
         </div>
 
