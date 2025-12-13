@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+{% load static %} <!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
@@ -7,6 +7,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <style>
+        /* Ajuste Geral para Tela Cheia sem barra de rolagem na janela principal */
         body { 
             background-color: #f0f2f5; 
             height: 100vh; 
@@ -14,72 +15,120 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
         
-        /* Coluna Esquerda (Busca e Lista) */
-        .pdv-main { height: 100vh; display: flex; flex-direction: column; padding: 20px; }
+        /* Layout Flex para ocupar 100% da altura */
+        .row-full-height {
+            height: 100vh;
+        }
+
+        /* --- COLUNA ESQUERDA (Produtos) --- */
+        .pdv-main { 
+            height: 100%; 
+            display: flex; 
+            flex-direction: column; 
+            padding: 15px; 
+        }
         
         .search-box {
-            background: white; padding: 20px; border-radius: 15px;
+            background: white; padding: 15px; border-radius: 12px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            margin-bottom: 20px;
+            margin-bottom: 15px;
+            flex-shrink: 0; /* Não deixa encolher */
         }
         
         .product-list {
-            flex: 1; overflow-y: auto; background: white;
-            border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            flex: 1; /* Ocupa todo o espaço restante */
+            overflow-y: auto; /* Rolagem interna */
+            background: white;
+            border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            min-height: 0; /* SEGREDO DO FLEXBOX: Permite encolher se necessário */
         }
 
-        /* Coluna Direita (Cupom / Recibo) */
+        /* --- COLUNA DIREITA (Cupom) --- */
         .pdv-sidebar {
-            background: #1a1f2c; /* Azul Escuro Profissional */
-            color: white; height: 100vh;
-            display: flex; flex-direction: column;
+            background: #1a1f2c; 
+            color: white; 
+            height: 100%;
+            display: flex; 
+            flex-direction: column;
             box-shadow: -5px 0 20px rgba(0,0,0,0.1);
         }
 
-        .receipt-header { padding: 30px 20px; background: #252b3b; border-bottom: 1px solid #363d52; }
-        .receipt-body { flex: 1; overflow-y: auto; padding: 20px; font-family: 'Courier New', Courier, monospace; }
-        .receipt-footer { padding: 30px 20px; background: #0066FF; color: white; }
+        .logo-area {
+            background: #131722;
+            padding: 15px;
+            text-align: center;
+            border-bottom: 1px solid #2d3446;
+            flex-shrink: 0;
+        }
 
-        /* Estilização da Tabela de Itens */
-        .table-custom thead th { background-color: #f8f9fa; border: none; color: #6c757d; }
-        .table-custom tbody td { vertical-align: middle; border-bottom: 1px solid #f0f0f0; padding: 15px; }
+        .receipt-header { 
+            padding: 20px; 
+            background: #252b3b; 
+            border-bottom: 1px solid #363d52;
+            flex-shrink: 0;
+        }
         
-        /* Input Gigante */
+        .receipt-body { 
+            flex: 1; /* Ocupa o meio */
+            overflow-y: auto; /* Rolagem se a lista for longa */
+            padding: 20px; 
+            font-family: 'Courier New', Courier, monospace;
+            min-height: 0; /* Vital para notebooks pequenos */
+        }
+        
+        .receipt-footer { 
+            padding: 20px; 
+            background: #0066FF; 
+            color: white; 
+            flex-shrink: 0; /* Garante que o rodapé nunca suma */
+        }
+
+        /* Tabelas e Inputs */
+        .table-custom thead th { background-color: #f8f9fa; border: none; color: #6c757d; position: sticky; top: 0; z-index: 10; }
+        .table-custom tbody td { vertical-align: middle; border-bottom: 1px solid #f0f0f0; padding: 12px; }
+        
         .input-hero {
-            border: none; font-size: 1.5rem; width: 100%; outline: none;
+            border: none; font-size: 1.3rem; width: 100%; outline: none;
             border-bottom: 2px solid #e9ecef; transition: 0.3s;
         }
         .input-hero:focus { border-color: #0066FF; }
 
         .item-row:hover { background-color: #f8faff; }
+
+        /* Ajuste da Imagem da Logo */
+        .img-logo-pdv {
+            max-height: 50px; /* Altura controlada */
+            width: auto;
+            object-fit: contain;
+        }
     </style>
 </head>
 <body>
 
-<div class="row g-0">
+<div class="row g-0 row-full-height">
     <div class="col-md-8 col-lg-9 pdv-main">
         
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h4 class="fw-bold text-secondary"><i class="bi bi-cart4 text-primary"></i> Nexum PDV</h4>
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-shrink-0">
+            <h5 class="fw-bold text-secondary m-0"><i class="bi bi-cart4 text-primary"></i> Nexum PDV</h5>
             <div>
-                <span class="badge bg-white text-dark border px-3 py-2 rounded-pill">
-                    <i class="bi bi-person-circle"></i> Vendedor: {{ request.user.first_name }}
+                <span class="badge bg-white text-dark border px-3 py-2 rounded-pill shadow-sm me-2">
+                    <i class="bi bi-person-circle"></i> {{ request.user.first_name|default:request.user.username }}
                 </span>
-                <a href="{% url 'dashboard' %}" class="btn btn-outline-danger btn-sm ms-2 rounded-pill px-3">Sair <i class="bi bi-x-lg"></i></a>
+                
+                <a href="{% url 'dashboard' %}" id="btn-sair" class="btn btn-danger btn-sm rounded-pill px-3 fw-bold">
+                    Sair (F10) <i class="bi bi-box-arrow-right"></i>
+                </a>
             </div>
         </div>
 
         <div class="search-box d-flex align-items-center">
-            <i class="bi bi-upc-scan fs-2 text-muted me-3"></i>
+            <i class="bi bi-upc-scan fs-3 text-muted me-3"></i>
             <div class="flex-grow-1">
                 <form method="POST" action="{% url 'adicionar_item' venda.id %}" id="form-barcode">
                     {% csrf_token %}
-                    <input type="text" name="codigo" id="codigo_barras" class="input-hero" placeholder="Biçar produto ou digitar código..." autofocus autocomplete="off">
+                    <input type="text" name="codigo" id="codigo_barras" class="input-hero" placeholder="Bipar produto ou digitar código..." autofocus autocomplete="off">
                 </form>
             </div>
-            <button class="btn btn-primary btn-lg rounded-circle ms-3" style="width: 60px; height: 60px;">
-                <i class="bi bi-plus-lg"></i>
-            </button>
         </div>
 
         <div class="product-list p-3">
@@ -97,7 +146,7 @@
                     {% for item in venda.itens.all %}
                     <tr class="item-row">
                         <td>
-                            <div class="fw-bold">{{ item.produto.nome }}</div>
+                            <div class="fw-bold text-dark">{{ item.produto.nome }}</div>
                             <small class="text-muted">
                                 {% if item.produto.tamanho %}{{ item.produto.tamanho }} - {% endif %}
                                 {{ item.produto.cor|default:"" }}
@@ -113,8 +162,10 @@
                     {% empty %}
                     <tr>
                         <td colspan="5" class="text-center py-5 text-muted">
-                            <i class="bi bi-basket fs-1 d-block mb-3 opacity-25"></i>
-                            Caixa Livre. Aguardando produtos...
+                            <div class="py-5">
+                                <i class="bi bi-basket fs-1 d-block mb-3 opacity-25"></i>
+                                <p>Caixa Livre. Aguardando produtos...</p>
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
@@ -124,21 +175,28 @@
     </div>
 
     <div class="col-md-4 col-lg-3 pdv-sidebar">
-        <div class="receipt-header">
-            <h5 class="m-0 fw-bold">RESUMO DA VENDA</h5>
-            <small class="opacity-50">#{{ venda.id }} - {{ venda.data_venda|date:"d/m/Y H:i" }}</small>
+        
+        <div class="logo-area">
+            <img src="{% static 'img/logopdv.png' %}" alt="Logo Loja" class="img-logo-pdv">
         </div>
 
-        <div class="receipt-body">
+        <div class="receipt-header">
+            <h6 class="m-0 fw-bold ls-1 text-uppercase">Resumo da Venda</h6>
+            <small class="opacity-50" style="font-size: 0.75rem;">#{{ venda.id }} - {{ venda.data_venda|date:"d/m/Y H:i" }}</small>
+        </div>
+
+        <div class="receipt-body custom-scrollbar">
             <div class="d-flex justify-content-between mb-3 pb-3 border-bottom border-secondary">
                 <span>CLIENTE</span>
-                <span class="text-end">{{ venda.cliente.nome|default:"Consumidor Final" }}</span>
+                <span class="text-end text-truncate" style="max-width: 150px;">
+                    {{ venda.cliente.nome|default:"Consumidor Final" }}
+                </span>
             </div>
 
             {% for item in venda.itens.all %}
             <div class="d-flex justify-content-between mb-2 small">
-                <span class="text-truncate" style="max-width: 60%;">{{ item.produto.nome }}</span>
-                <span>{{ item.quantidade }}x R$ {{ item.preco_unitario }}</span>
+                <span class="text-truncate" style="max-width: 65%;">{{ item.produto.nome }}</span>
+                <span>{{ item.quantidade }}x {{ item.preco_unitario }}</span>
             </div>
             {% endfor %}
 
@@ -156,15 +214,15 @@
 
         <div class="receipt-footer text-center">
             <small class="d-block mb-1 opacity-75">TOTAL A PAGAR</small>
-            <h1 class="fw-bold display-4 mb-4">R$ {{ venda.valor_total }}</h1>
+            <h1 class="fw-bold display-4 mb-3">R$ {{ venda.valor_total }}</h1>
             
             <div class="d-grid gap-2">
-                <button class="btn btn-light btn-lg fw-bold text-primary">
+                <button class="btn btn-light btn-lg fw-bold text-primary shadow-sm">
                     <i class="bi bi-cash-coin me-2"></i> FINALIZAR (F2)
                 </button>
-                <button class="btn btn-outline-light border-0 opacity-75">
+                <a href="#" class="btn btn-outline-light border-0 opacity-75 btn-sm">
                     Cancelar Venda
-                </button>
+                </a>
             </div>
         </div>
     </div>
@@ -172,13 +230,29 @@
 
 <script>
     document.addEventListener("DOMContentLoaded", function() {
+        // Foca no input ao abrir
         document.getElementById("codigo_barras").focus();
         
-        // Atalho F2 para finalizar
+        // Atalhos de Teclado
         document.addEventListener('keydown', function(event) {
+            
+            // F2: Finalizar
             if (event.key === 'F2') {
-                // Aqui você chamaria a função de fechar venda
+                event.preventDefault();
                 alert("Abrir modal de pagamento..."); 
+            }
+            
+            // F10: Sair do PDV
+            if (event.key === 'F10') {
+                event.preventDefault();
+                document.getElementById('btn-sair').click();
+            }
+        });
+
+        // Mantém foco no input se clicar fora (opcional, estilo quiosque)
+        document.addEventListener('click', function(e) {
+            if(e.target.tagName !== 'BUTTON' && e.target.tagName !== 'A') {
+                document.getElementById("codigo_barras").focus();
             }
         });
     });
