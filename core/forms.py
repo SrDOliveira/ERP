@@ -35,13 +35,18 @@ class AjusteEstoqueForm(forms.ModelForm):
         self.fields['produto'].queryset = Produto.objects.filter(empresa=user.empresa)
 
 # --- PRODUTO ---
+# core/forms.py
+
 class ProdutoForm(forms.ModelForm):
     class Meta:
         model = Produto
-        fields = ['nome', 'categoria', 'fornecedor', 'preco_custo', 'preco_venda', 'porcentagem_comissao', 'estoque_atual', 'codigo_barras', 'descricao', 'foto']
+        # ESTA LINHA ABAIXO É A QUE ESTAVA FALTANDO OU COM ERRO:
+        fields = ['nome', 'tamanho', 'cor', 'categoria', 'fornecedor', 'preco_custo', 'preco_venda', 'porcentagem_comissao', 'estoque_atual', 'codigo_barras', 'descricao', 'foto']
         
         widgets = {
             'nome': forms.TextInput(attrs={'class': 'form-control'}),
+            'tamanho': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: P, M, 38'}),
+            'cor': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Azul Marinho'}),
             'categoria': forms.Select(attrs={'class': 'form-select'}),
             'fornecedor': forms.Select(attrs={'class': 'form-select'}),
             'preco_custo': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
@@ -60,6 +65,9 @@ class ProdutoForm(forms.ModelForm):
         self.fields['fornecedor'].required = False
         self.fields['categoria'].required = False
         self.fields['codigo_barras'].required = False
+        self.fields['tamanho'].required = False
+        self.fields['cor'].required = False
+        self.fields['foto'].required = False
         
 # --- CAIXA ---
 class AberturaCaixaForm(forms.ModelForm):

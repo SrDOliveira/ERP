@@ -162,6 +162,10 @@ class Produto(ModeloDoTenant):
     fornecedor = models.ForeignKey(Fornecedor, on_delete=models.SET_NULL, null=True, blank=True)
     codigo_barras = models.CharField(max_length=50, blank=True, null=True)
     
+# NOVOS CAMPOS
+    tamanho = models.CharField(max_length=10, blank=True, null=True, help_text="Ex: P, M, G, 38, 42")
+    cor = models.CharField(max_length=30, blank=True, null=True, help_text="Ex: Azul, Vermelho, Estampado")
+
     preco_custo = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     preco_venda = models.DecimalField(max_digits=10, decimal_places=2)
     porcentagem_comissao = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)

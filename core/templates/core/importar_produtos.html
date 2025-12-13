@@ -1,0 +1,28 @@
+{% extends 'core/base.html' %}
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow">
+        <div class="card-header bg-success text-white">
+            <h4 class="mb-0"><i class="bi bi-file-earmark-spreadsheet me-2"></i> Importar Produtos via Excel</h4>
+        </div>
+        <div class="card-body">
+            <p>Facilite o cadastro! Baixe nossa planilha modelo, preencha e envie de volta.</p>
+
+            <div class="alert alert-info">
+                <strong>Colunas Obrigatórias no Excel:</strong><br>
+                Nome | Codigo | Categoria | Tamanho | Cor | Custo | Venda | Estoque
+            </div>
+
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label">Selecione o arquivo .xlsx</label>
+                    <input type="file" name="arquivo_excel" class="form-control" accept=".xlsx" required>
+                </div>
+                <button type="submit" class="btn btn-success">Importar Agora</button>
+                <a href="{% url 'lista_produtos' %}" class="btn btn-secondary">Cancelar</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
