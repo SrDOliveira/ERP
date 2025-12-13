@@ -20,9 +20,10 @@ urlpatterns = [
     path('login/', CustomLoginView.as_view(), name='login'),    
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('produtos/', views.lista_produtos, name='lista_produtos'),
-    path('produtos/novo/', views.adicionar_produto, name='adicionar_produto'),
+    path('produtos/novo/', views.criar_produto, name='criar_produto'),
     path('produtos/editar/<int:produto_id>/', views.editar_produto, name='editar_produto'),
     path('produtos/excluir/<int:produto_id>/', views.excluir_produto, name='excluir_produto'),
+    path('produtos/importar/', views.importar_produtos, name='importar_produtos'),
     path('produtos/catalogo-qr/', views.catalogo_qr, name='catalogo_qr'),
     path('venda/cupom/<int:venda_id>/', views.imprimir_cupom, name='imprimir_cupom'),
     path('saas-admin/contrato/<int:empresa_id>/', views.gerar_contrato_pdf, name='gerar_contrato_pdf'),
@@ -62,4 +63,5 @@ urlpatterns = [
     path('suporte/', views.suporte, name='suporte'),
     path('estoque/ajuste/', views.ajuste_estoque, name='ajuste_estoque'),
     path('saas-admin/responder/<int:chamado_id>/', views.responder_chamado, name='responder_chamado'),
+    path('produtos/importar/', views.importar_produtos, name='importar_produtos'),
 ]
