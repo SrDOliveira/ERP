@@ -797,3 +797,55 @@ def ajuste_estoque(request):
         form = AjusteEstoqueForm(request.user)
         
     return render(request, 'core/ajuste_estoque.html', {'form': form, 'ajustes': ajustes})
+
+# =========================================================
+#  FUNÇÕES DO PAINEL SAAS (ADMIN)
+#  Cole isso no FINAL do arquivo core/views.py
+# =========================================================
+
+@staff_member_required
+def saas_painel(request):
+    # Import local para evitar erro de ciclo, se necessário
+    from .models import Chamado 
+    
+    empresas = Empresa.objects.all().order_by('-data_criacao')
+    chamados = Chamado.objects.all().order_by('status', '-data_abertura')
+    
+    context = {
+        'empresas': empresas,
+        'total_lojas': empresas.count(),
+        'lojas_ativas': empresas.filter(ativa=True).count(),
+        'chamados': chamados,
+        'chamados_abertos': chamados.filter(status='ABERTO').count()
+    }
+    return render(request, 'core/saas_painel.html', context)
+
+@staff_member_required
+def alternar_status_loja(request, empresa_id):
+    empresa = get_object_or_404(Empresa, id=empresa_id)
+    empresa.ativa = not empresa.ativa
+    empresa.save()
+    return redirect('saas_painel')
+
+@staff_member_required
+def gerar_contrato_pdf(request, empresa_id):
+    # Requer instalação de bibliotecas PDF (weasyprint), 
+    # se não tiver, comente o miolo e retorne um HttpResponse simples por enquanto.
+    empresa = get_object_or_404(Empresa, id=empresa_id)
+    return HttpResponse("Funcionalidade de PDF em manutenção.")
+
+@staff_member_required
+def responder_chamado(request, chamado_id):
+    from .models import Chamado
+    chamado = get_object_or_404(Chamado, id=chamado_id)
+    
+    if request.method == 'POST':
+        resposta = request.POST.get('resposta')
+        if resposta:
+            chamado.resposta_admin = resposta
+            chamado.status = 'RESOLVIDO'
+            chamado.save()
+            messages.success(request, f"Chamado #{chamado.id} respondido!")
+            return redirect('saas_painel')
+            
+    return render(request, 'core/form_responder_chamado.html', {'chamado': chamado})
