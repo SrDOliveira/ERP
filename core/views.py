@@ -462,7 +462,7 @@ def excluir_produto(request, produto_id):
     p = get_object_or_404(Produto, id=produto_id, empresa=request.user.empresa)
     p.delete()
     return redirect('lista_produtos')
-'''
+
 @login_required
 def configuracoes(request):
     if request.user.cargo == 'VENDEDOR': return HttpResponseForbidden()
@@ -476,7 +476,7 @@ def configuracoes(request):
     else:
         form = ConfiguracaoEmpresaForm(instance=empresa)
     return render(request, 'core/configuracoes.html', {'form': form})
-'''
+
 @login_required
 def financeiro(request):
     # Vendedor continua bloqueado
