@@ -4,109 +4,152 @@
 
 {% block content %}
 <div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3>Estoque de Produtos</h3>
+    
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <h3 class="fw-bold text-secondary mb-0"><i class="bi bi-boxes"></i> Estoque</h3>
+        
         <div class="d-flex gap-2">
-            <div class="btn-group" role="group">
-                <button type="button" class="btn btn-outline-secondary active" id="btnList" onclick="mudarVisualizacao('lista')">
-                    <i class="bi bi-list-ul"></i> Lista
+            <div class="btn-group shadow-sm" role="group">
+                <button type="button" class="btn btn-outline-secondary active" id="btnList" onclick="mudarVisualizacao('lista')" title="Ver em Lista">
+                    <i class="bi bi-list-ul"></i>
                 </button>
-                <button type="button" class="btn btn-outline-secondary" id="btnGrid" onclick="mudarVisualizacao('grade')">
-                    <i class="bi bi-grid-3x3-gap-fill"></i> Grade
+                <button type="button" class="btn btn-outline-secondary" id="btnGrid" onclick="mudarVisualizacao('grade')" title="Ver em Grade">
+                    <i class="bi bi-grid-3x3-gap-fill"></i>
                 </button>
             </div>
             
-            <a href="{% url 'catalogo_qr' %}" class="btn btn-outline-dark">
-                <i class="bi bi-qr-code"></i> Etiquetas
+            <a href="{% url 'importar_produtos' %}" class="btn btn-success text-white shadow-sm">
+                <i class="bi bi-file-earmark-spreadsheet-fill"></i> Importar Excel
             </a>
-
-            <a href="{% url 'adicionar_produto' %}" class="btn btn-primary">
+            
+            <a href="{% url 'criar_produto' %}" class="btn btn-primary shadow-sm">
                 <i class="bi bi-plus-lg"></i> Novo Produto
             </a>
-        </div>
+
+            </div>
     </div>
 
-    <div id="viewLista" class="card shadow-sm">
+    {% if not produtos %}
+        <div class="alert alert-info d-flex align-items-center" role="alert">
+            <i class="bi bi-info-circle-fill fs-4 me-3"></i>
+            <div>
+                <strong>Seu estoque está vazio!</strong> 
+                <br>Para começar rápido, use o botão <b>"Importar Excel"</b> ou cadastre manualmente.
+            </div>
+        </div>
+    {% endif %}
+
+    <div id="viewLista" class="card shadow-sm border-0">
         <div class="card-body p-0">
-            <table class="table table-hover mb-0 align-middle">
-                <thead class="table-light">
-                    <tr>
-                        <th style="width: 80px;">Foto</th>
-                        <th>Produto</th>
-                        <th>Categoria</th>
-                        <th>Preço</th>
-                        <th>Estoque</th>
-                        <th class="text-end">Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for p in produtos %}
-                    <tr>
-                        <td>
-                            {% if p.foto %}
-                                <img src="{{ p.foto.url }}" class="rounded" style="width: 50px; height: 50px; object-fit: cover;">
-                            {% else %}
-                                <div class="bg-secondary bg-opacity-10 rounded d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
-                                    <i class="bi bi-image text-muted"></i>
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 70px;" class="text-center">Foto</th>
+                            <th>Produto</th>
+                            <th>Variação</th> <th>Categoria</th>
+                            <th>Preço</th>
+                            <th class="text-center">Estoque</th>
+                            <th class="text-end pe-3">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in produtos %}
+                        <tr>
+                            <td class="text-center">
+                                {% if p.foto %}
+                                    <img src="{{ p.foto.url }}" class="rounded border" style="width: 45px; height: 45px; object-fit: cover;">
+                                {% else %}
+                                    <div class="bg-light border rounded d-inline-flex align-items-center justify-content-center" style="width: 45px; height: 45px;">
+                                        <i class="bi bi-camera-fill text-muted opacity-25"></i>
+                                    </div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="fw-bold text-dark">{{ p.nome }}</div>
+                                <small class="text-muted" style="font-size: 0.75rem;">
+                                    <i class="bi bi-upc-scan"></i> {{ p.codigo_barras|default:"--" }}
+                                </small>
+                            </td>
+                            
+                            <td>
+                                {% if p.tamanho %}
+                                    <span class="badge bg-dark">{{ p.tamanho }}</span>
+                                {% endif %}
+                                {% if p.cor %}
+                                    <span class="text-muted small ms-1">{{ p.cor }}</span>
+                                {% endif %}
+                                {% if not p.tamanho and not p.cor %}
+                                    <span class="text-muted small">-</span>
+                                {% endif %}
+                            </td>
+
+                            <td><span class="badge bg-light text-dark border">{{ p.categoria.nome|default:"Geral" }}</span></td>
+                            
+                            <td class="fw-bold text-primary">R$ {{ p.preco_venda }}</td>
+                            
+                            <td class="text-center">
+                                {% if p.estoque_atual <= p.estoque_minimo %}
+                                    <span class="badge bg-danger rounded-pill shadow-sm" title="Estoque Baixo!">{{ p.estoque_atual }}</span>
+                                {% else %}
+                                    <span class="badge bg-success bg-opacity-10 text-success rounded-pill">{{ p.estoque_atual }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end pe-3">
+                                <div class="btn-group">
+                                    <a href="{% url 'editar_produto' p.id %}" class="btn btn-sm btn-light border" title="Editar"><i class="bi bi-pencil-fill text-primary"></i></a>
+                                    <a href="{% url 'excluir_produto' p.id %}" class="btn btn-sm btn-light border" onclick="return confirm('Tem certeza que deseja excluir {{ p.nome }}?');" title="Excluir"><i class="bi bi-trash-fill text-danger"></i></a>
                                 </div>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <strong>{{ p.nome }}</strong><br>
-                            <small class="text-muted">{{ p.codigo_barras|default:"--" }}</small>
-                        </td>
-                        <td><span class="badge bg-light text-dark border">{{ p.categoria.nome|default:"Geral" }}</span></td>
-                        <td class="fw-bold">R$ {{ p.preco_venda }}</td>
-                        <td>
-                            {% if p.estoque_atual <= p.estoque_minimo %}
-                                <span class="badge bg-danger">{{ p.estoque_atual }} (Baixo)</span>
-                            {% else %}
-                                <span class="badge bg-success">{{ p.estoque_atual }}</span>
-                            {% endif %}
-                        </td>
-                        <td class="text-end">
-                            <a href="{% url 'editar_produto' p.id %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
-                            <a href="{% url 'excluir_produto' p.id %}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Excluir?');"><i class="bi bi-trash"></i></a>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr><td colspan="6" class="text-center py-4">Nenhum produto cadastrado.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
     <div id="viewGrade" class="row g-3" style="display: none;">
         {% for p in produtos %}
-        <div class="col-md-3 col-sm-6">
-            <div class="card h-100 shadow-sm">
-                <div style="height: 200px; overflow: hidden;" class="bg-light d-flex align-items-center justify-content-center position-relative">
+        <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
+            <div class="card h-100 shadow-sm border-0 hover-card">
+                
+                <div style="height: 200px; overflow: hidden;" class="bg-light position-relative d-flex align-items-center justify-content-center">
                     {% if p.foto %}
-                        <img src="{{ p.foto.url }}" class="card-img-top" style="height: 100%; width: 100%; object-fit: cover;">
+                        <img src="{{ p.foto.url }}" class="card-img-top h-100 w-100" style="object-fit: cover;">
                     {% else %}
-                        <i class="bi bi-image text-secondary" style="font-size: 3rem;"></i>
+                        <i class="bi bi-camera-fill text-muted opacity-25" style="font-size: 3rem;"></i>
                     {% endif %}
                     
-                    <span class="position-absolute bottom-0 end-0 bg-success text-white px-3 py-1 m-2 rounded-pill fw-bold">
+                    <span class="position-absolute bottom-0 end-0 bg-white text-dark px-2 py-1 m-2 rounded shadow-sm fw-bold small border">
                         R$ {{ p.preco_venda }}
                     </span>
+                    
+                    {% if p.tamanho %}
+                    <span class="position-absolute top-0 start-0 bg-dark text-white px-2 py-1 m-2 rounded-1 small fw-bold shadow-sm">
+                        {{ p.tamanho }}
+                    </span>
+                    {% endif %}
                 </div>
 
-                <div class="card-body">
-                    <h5 class="card-title text-truncate" title="{{ p.nome }}">{{ p.nome }}</h5>
-                    <p class="card-text small text-muted mb-2">{{ p.categoria.nome|default:"Geral" }}</p>
+                <div class="card-body p-2 d-flex flex-column">
+                    <h6 class="card-title text-truncate mb-1 fw-bold" title="{{ p.nome }}">{{ p.nome }}</h6>
                     
-                    <div class="d-flex justify-content-between align-items-center mt-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <small class="text-muted text-truncate">{{ p.categoria.nome }}</small>
+                        {% if p.cor %}
+                            <small class="border px-1 rounded bg-light" style="font-size: 10px;">{{ p.cor }}</small>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mt-auto pt-2 border-top d-flex justify-content-between align-items-center">
                         {% if p.estoque_atual <= p.estoque_minimo %}
-                            <small class="text-danger fw-bold"><i class="bi bi-exclamation-circle"></i> {{ p.estoque_atual }} un</small>
+                            <small class="text-danger fw-bold" style="font-size: 11px;"><i class="bi bi-exclamation-circle"></i> Restam {{ p.estoque_atual }}</small>
                         {% else %}
-                            <small class="text-success"><i class="bi bi-check-circle"></i> {{ p.estoque_atual }} un</small>
+                            <small class="text-success" style="font-size: 11px;"><i class="bi bi-check-circle"></i> {{ p.estoque_atual }} un</small>
                         {% endif %}
                         
-                        <div>
-                            <a href="{% url 'editar_produto' p.id %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
-                        </div>
+                        <a href="{% url 'editar_produto' p.id %}" class="btn btn-sm btn-outline-primary py-0" style="font-size: 12px;">Editar</a>
                     </div>
                 </div>
             </div>
@@ -115,6 +158,17 @@
     </div>
 
 </div>
+
+<style>
+    .hover-card:hover {
+        transform: translateY(-5px);
+        transition: transform 0.2s ease-in-out;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+    }
+    .table > :not(caption) > * > * {
+        padding: 0.8rem 0.8rem;
+    }
+</style>
 
 <script>
     function mudarVisualizacao(modo) {
@@ -125,7 +179,7 @@
 
         if (modo === 'grade') {
             lista.style.display = 'none';
-            grade.style.display = 'flex';
+            grade.style.display = 'flex'; // Importante para o Grid do Bootstrap
             btnList.classList.remove('active');
             btnGrid.classList.add('active');
             localStorage.setItem('modoVisualizacao', 'grade');
@@ -138,6 +192,7 @@
         }
     }
 
+    // Ao carregar a página, verifica a preferência do usuário
     document.addEventListener("DOMContentLoaded", function() {
         const modoSalvo = localStorage.getItem('modoVisualizacao');
         if (modoSalvo === 'grade') {

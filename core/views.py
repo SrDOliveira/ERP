@@ -1,5 +1,16 @@
 # core/views.py (VERSÃO COMPLETA COM DIAGNÓSTICO DE PAGAMENTO)
 
+# core/views.py (Topo)
+
+from .forms import (
+    ProdutoForm, AberturaCaixaForm, FechamentoCaixaForm,
+    CategoriaForm, FornecedorForm, ClienteForm, 
+    UsuarioForm, CadastroLojaForm,
+    ConfiguracaoEmpresaForm,  # <--- ELE TEM QUE ESTAR AQUI!
+    ChamadoForm, AjusteEstoqueForm
+)
+import pandas as pd
+from django.core.files.storage import FileSystemStorage
 import os
 import uuid
 import requests
@@ -34,12 +45,7 @@ from .models import (
     MovimentoCaixa, Caixa, FormaPagamento, Usuario,
     Categoria, Fornecedor
 )
-from .forms import (
-    ProdutoForm, AberturaCaixaForm, FechamentoCaixaForm,
-    CategoriaForm, FornecedorForm, ClienteForm, 
-    #ConfiguracaoEmpresaForm, UsuarioForm,
-    CadastroLojaForm
-)
+
 
 # CONFIGURAÇÕES ASAAS
 ASAAS_API_KEY = os.environ.get('ASAAS_API_KEY', '')
@@ -849,3 +855,56 @@ def responder_chamado(request, chamado_id):
             return redirect('saas_painel')
             
     return render(request, 'core/form_responder_chamado.html', {'chamado': chamado})
+
+@login_required
+def importar_produtos(request):
+    if request.user.cargo == 'VENDEDOR': return HttpResponseForbidden()
+
+    if request.method == 'POST' and request.FILES['arquivo_excel']:
+        excel_file = request.FILES['arquivo_excel']
+        fs = FileSystemStorage()
+        filename = fs.save(excel_file.name, excel_file)
+        uploaded_file_url = fs.path(filename)
+
+        try:
+            # Ler o Excel usando Pandas
+            df = pd.read_excel(uploaded_file_url)
+
+            # Iterar sobre as linhas
+            contador = 0
+            for index, row in df.iterrows():
+                # Verifica se o produto já existe pelo código de barras (para não duplicar)
+                codigo = str(row.get('Codigo', '')).strip()
+                if codigo and Produto.objects.filter(empresa=request.user.empresa, codigo_barras=codigo).exists():
+                    continue
+
+                # Tenta pegar ou criar a Categoria
+                nome_categoria = str(row.get('Categoria', 'Geral')).strip()
+                categoria_obj, _ = Categoria.objects.get_or_create(
+                    empresa=request.user.empresa, 
+                    nome=nome_categoria
+                )
+
+                # Cria o Produto
+                Produto.objects.create(
+                    empresa=request.user.empresa,
+                    nome=str(row.get('Nome', 'Produto Sem Nome')),
+                    tamanho=str(row.get('Tamanho', '')),
+                    cor=str(row.get('Cor', '')),
+                    codigo_barras=codigo,
+                    preco_custo=float(str(row.get('Custo', 0)).replace(',', '.')),
+                    preco_venda=float(str(row.get('Venda', 0)).replace(',', '.')),
+                    estoque_atual=int(row.get('Estoque', 0)),
+                    categoria=categoria_obj
+                )
+                contador += 1
+
+            messages.success(request, f"{contador} produtos importados com sucesso!")
+        except Exception as e:
+            messages.error(request, f"Erro ao processar arquivo: {str(e)}")
+        finally:
+            fs.delete(filename) # Limpa o arquivo temporário
+
+        return redirect('lista_produtos')
+
+    return render(request, 'core/importar_produtos.html')
