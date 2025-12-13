@@ -1,10 +1,12 @@
-from .models import Chamado, AjusteEstoque # Importe os novos models
 from django import forms
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
-from .models import Produto, MovimentoCaixa, Usuario, Caixa, Empresa, Categoria, Fornecedor, Cliente
+from .models import (
+    Produto, MovimentoCaixa, Usuario, Caixa, Empresa, 
+    Categoria, Fornecedor, Cliente, Chamado, AjusteEstoque
+)
 
-
+# --- SUPORTE ---
 class ChamadoForm(forms.ModelForm):
     class Meta:
         model = Chamado
@@ -16,6 +18,7 @@ class ChamadoForm(forms.ModelForm):
             'anexo': forms.FileInput(attrs={'class': 'form-control'}),
         }
 
+# --- ESTOQUE ---
 class AjusteEstoqueForm(forms.ModelForm):
     class Meta:
         model = AjusteEstoque
@@ -31,9 +34,7 @@ class AjusteEstoqueForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields['produto'].queryset = Produto.objects.filter(empresa=user.empresa)
 
-# ... (aqui começam as classes ProdutoForm, etc)
-
-# --- Formulário de Produto ---
+# --- PRODUTO ---
 class ProdutoForm(forms.ModelForm):
     class Meta:
         model = Produto
@@ -54,30 +55,27 @@ class ProdutoForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super(ProdutoForm, self).__init__(*args, **kwargs)
-        # AQUI ESTÁ O PULO DO GATO: Tornamos os campos opcionais manualmente
+        # Campos Opcionais
         self.fields['porcentagem_comissao'].required = False
         self.fields['fornecedor'].required = False
         self.fields['categoria'].required = False
         self.fields['codigo_barras'].required = False
         
-# --- Formulário de Abertura de Caixa ---
+# --- CAIXA ---
 class AberturaCaixaForm(forms.ModelForm):
     class Meta:
         model = MovimentoCaixa
         fields = ['caixa', 'valor_abertura']
         widgets = {
             'caixa': forms.Select(attrs={'class': 'form-select form-select-lg'}),
-            'valor_abertura': forms.NumberInput(attrs={'class': 'form-control form-control-lg', 'step': '0.01'}),
+            'valor_abertura': forms.NumberInput(attrs={'class': 'form-control form-select-lg', 'step': '0.01'}),
         }
     
     def __init__(self, user, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Filtra apenas caixas da empresa do usuário
         self.fields['caixa'].queryset = Caixa.objects.filter(empresa=user.empresa)
 
-# --- Formulário de Fechamento de Caixa ---
 class FechamentoCaixaForm(forms.ModelForm):
-    # Campos extras para autenticação do gerente
     gerente = forms.ModelChoiceField(
         queryset=Usuario.objects.none(), 
         label="Autorização do Gerente", 
@@ -98,7 +96,6 @@ class FechamentoCaixaForm(forms.ModelForm):
 
     def __init__(self, user, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Popula o campo gerente apenas com gerentes/donos daquela empresa
         self.fields['gerente'].queryset = Usuario.objects.filter(
             empresa=user.empresa, 
             cargo__in=['GERENTE', 'SUPORTE']
@@ -110,13 +107,11 @@ class FechamentoCaixaForm(forms.ModelForm):
         senha = cleaned_data.get('senha_gerente')
 
         if gerente and senha:
-            # Verifica se a senha do gerente está correta
             if not gerente.check_password(senha):
                 raise ValidationError("Senha do gerente incorreta!")
         return cleaned_data
-    
-    # ... (mantenha os imports e forms existentes)
 
+# --- CADASTROS GERAIS ---
 class CategoriaForm(forms.ModelForm):
     class Meta:
         model = Categoria
@@ -145,13 +140,12 @@ class ClienteForm(forms.ModelForm):
             'email': forms.EmailInput(attrs={'class': 'form-control'}),
             'endereco': forms.TextInput(attrs={'class': 'form-control'}),
         }
-        
+    
+'''
 class ConfiguracaoEmpresaForm(forms.ModelForm):
     class Meta:
         model = Empresa
-        # Esta linha é OBRIGATÓRIA e deve estar ativa:
         fields = ['nome_fantasia', 'cnpj', 'logo', 'mensagem_cupom', 'cor_sistema']
-        
         widgets = {
             'nome_fantasia': forms.TextInput(attrs={'class': 'form-control'}),
             'cnpj': forms.TextInput(attrs={'class': 'form-control'}),
@@ -159,14 +153,9 @@ class ConfiguracaoEmpresaForm(forms.ModelForm):
             'cor_sistema': forms.TextInput(attrs={'class': 'form-control', 'type': 'color'}),
             'logo': forms.ClearableFileInput(attrs={'class': 'form-control'}),
         }
-
-        # Adicione este import no topo se não tiver
-from django.contrib.auth.models import User 
-
-# ... (outros forms)
-
+'''
 class UsuarioForm(forms.ModelForm):
-    senha = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'form-control'}), required=False, help_text="Deixe em branco para manter a atual (na edição)")
+    senha = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'form-control'}), required=False, help_text="Deixe em branco para manter a atual")
     
     class Meta:
         model = Usuario
@@ -179,12 +168,17 @@ class UsuarioForm(forms.ModelForm):
             'cargo': forms.Select(attrs={'class': 'form-select'}),
         }
 
-# Adicione no final do arquivo core/forms.py
-
+# --- CADASTRO PÚBLICO (SIGN UP) ---
 class CadastroLojaForm(forms.Form):
-    # Dados da Loja
     nome_loja = forms.CharField(label="Nome da Loja", widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Boutique da Ana'}))
     
+    # Campo de Ramo (Wizard)
+    ramo = forms.ChoiceField(
+        label="Qual seu segmento?",
+        choices=Empresa.RAMO_CHOICES,
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+
     # Dados do Dono
     nome_usuario = forms.CharField(label="Seu Nome", widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Seu nome completo'}))
     email = forms.EmailField(label="E-mail", widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'seu@email.com'}))
@@ -196,45 +190,3 @@ class CadastroLojaForm(forms.Form):
         if Usuario.objects.filter(username=username).exists():
             raise ValidationError("Este nome de usuário já existe. Escolha outro.")
         return username
-    
-
-# =========================================================
-#  AUTO-CADASTRO (SIGN UP)
-# =========================================================
-def cadastro_loja(request):
-    if request.method == 'POST':
-        form = CadastroLojaForm(request.POST)
-        if form.is_valid():
-            data = form.cleaned_data
-            
-            # 1. Criar a Empresa
-            nova_empresa = Empresa.objects.create(
-                nome_fantasia=data['nome_loja'],
-                ativa=True
-            )
-            
-            # 2. Criar o Usuário Dono (Gerente)
-            novo_usuario = Usuario.objects.create_user(
-                username=data['username'],
-                email=data['email'],
-                password=data['senha'],
-                first_name=data['nome_usuario'],
-                empresa=nova_empresa,
-                cargo='GERENTE' # Já nasce mandando
-            )
-            
-            # 3. ONBOARDING: Criar dados iniciais para a loja não ficar vazia
-            Caixa.objects.create(empresa=nova_empresa, nome="Caixa Principal", observacao="Caixa padrão do sistema")
-            FormaPagamento.objects.create(empresa=nova_empresa, nome="Dinheiro", taxa=0)
-            FormaPagamento.objects.create(empresa=nova_empresa, nome="Cartão de Crédito", taxa=3.5, dias_para_receber=30)
-            FormaPagamento.objects.create(empresa=nova_empresa, nome="PIX", taxa=0)
-            
-            # 4. Logar e Redirecionar
-            login(request, novo_usuario)
-            messages.success(request, f"Bem-vindo ao Nexum! Sua loja '{data['nome_loja']}' está pronta.")
-            return redirect('dashboard')
-            
-    else:
-        form = CadastroLojaForm()
-        
-    return render(request, 'core/signup.html', {'form': form})

@@ -37,7 +37,7 @@ from .models import (
 from .forms import (
     ProdutoForm, AberturaCaixaForm, FechamentoCaixaForm,
     CategoriaForm, FornecedorForm, ClienteForm, 
-    ConfiguracaoEmpresaForm, UsuarioForm,
+    #ConfiguracaoEmpresaForm, UsuarioForm,
     CadastroLojaForm
 )
 
@@ -99,12 +99,14 @@ def cadastro_loja(request):
             data = form.cleaned_data
             cnpj_provisorio = f"TEMP-{uuid.uuid4().hex[:8]}"
 
+            # 1. Criar Empresa com o Ramo
             nova_empresa = Empresa.objects.create(
                 nome_fantasia=data['nome_loja'],
                 cnpj=cnpj_provisorio,
                 ativa=True,
                 data_vencimento=timezone.now().date() + timedelta(days=7),
-                plano='ESSENCIAL'
+                plano='ESSENCIAL',
+                ramo_atividade=data['ramo'] # <--- SALVA O RAMO
             )
             
             novo_usuario = Usuario.objects.create_user(
@@ -116,10 +118,45 @@ def cadastro_loja(request):
                 cargo='GERENTE'
             )
             
-            Caixa.objects.create(empresa=nova_empresa, nome="Caixa Principal", observacao="Caixa padrão")
+            # 3. ONBOARDING INTELIGENTE (TEMPLATES)
+            # Cria o básico para todos
+            Caixa.objects.create(empresa=nova_empresa, nome="Caixa Principal")
             FormaPagamento.objects.create(empresa=nova_empresa, nome="Dinheiro", taxa=0)
-            FormaPagamento.objects.create(empresa=nova_empresa, nome="Cartão Crédito", taxa=3.5, dias_para_receber=30)
-            FormaPagamento.objects.create(empresa=nova_empresa, nome="PIX", taxa=0)
+            FormaPagamento.objects.create(empresa=nova_empresa, nome="Pix", taxa=0)
+            
+            # --- AQUI ENTRA A PERSONALIZAÇÃO POR NICHO ---
+            
+            if data['ramo'] == 'ROUPAS':
+                # Cria categorias de moda
+                Categoria.objects.create(empresa=nova_empresa, nome="Camisetas")
+                Categoria.objects.create(empresa=nova_empresa, nome="Calças")
+                Categoria.objects.create(empresa=nova_empresa, nome="Acessórios")
+                Categoria.objects.create(empresa=nova_empresa, nome="Vestidos")
+                
+            elif data['ramo'] == 'MERCADO':
+                # Cria categorias de mercado
+                Categoria.objects.create(empresa=nova_empresa, nome="Bebidas")
+                Categoria.objects.create(empresa=nova_empresa, nome="Mercearia")
+                Categoria.objects.create(empresa=nova_empresa, nome="Limpeza")
+                Categoria.objects.create(empresa=nova_empresa, nome="Hortifruti")
+                
+            elif data['ramo'] == 'SERVICOS':
+                # Cria categorias de serviço
+                Categoria.objects.create(empresa=nova_empresa, nome="Mão de Obra")
+                Categoria.objects.create(empresa=nova_empresa, nome="Consultoria")
+                Categoria.objects.create(empresa=nova_empresa, nome="Manutenção")
+            
+            # ... (seus ifs anteriores) ...
+
+            elif data['ramo'] == 'SERVICOS':
+                Categoria.objects.create(empresa=nova_empresa, nome="Mão de Obra")
+                Categoria.objects.create(empresa=nova_empresa, nome="Consultoria")
+                Categoria.objects.create(empresa=nova_empresa, nome="Manutenção")
+            
+            else:
+                # Caso ele escolha "Outros" ou algo novo
+                Categoria.objects.create(empresa=nova_empresa, nome="Geral")
+                Categoria.objects.create(empresa=nova_empresa, nome="Novidades")
             
             login(request, novo_usuario)
             messages.success(request, f"Bem-vindo ao Nexum! Sua loja foi criada.")
@@ -425,7 +462,7 @@ def excluir_produto(request, produto_id):
     p = get_object_or_404(Produto, id=produto_id, empresa=request.user.empresa)
     p.delete()
     return redirect('lista_produtos')
-
+'''
 @login_required
 def configuracoes(request):
     if request.user.cargo == 'VENDEDOR': return HttpResponseForbidden()
@@ -439,7 +476,7 @@ def configuracoes(request):
     else:
         form = ConfiguracaoEmpresaForm(instance=empresa)
     return render(request, 'core/configuracoes.html', {'form': form})
-
+'''
 @login_required
 def financeiro(request):
     # Vendedor continua bloqueado

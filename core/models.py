@@ -6,22 +6,50 @@ from django.core.files.base import ContentFile
 from django.utils import timezone
 
 # =========================================================
-#  1. EMPRESAS E USUÁRIOS
+#  1. EMPRESA (A MÃE DE TODOS) - DEVE FICAR NO TOPO
 # =========================================================
 class Empresa(models.Model):
-    # --- 1. PLANOS E ASSINATURA ---
+    # --- OPÇÕES ---
     PLANOS_CHOICES = (
         ('ESSENCIAL', 'Essencial (R$ 129)'),
         ('PRO', 'Profissional (R$ 249)'),
         ('EXPANSAO', 'Expansão (Corporativo)'),
     )
+    RAMO_CHOICES = (
+        ('ROUPAS', 'Loja de Roupas / Calçados'),
+        ('MERCADO', 'Mercado / Conveniência'),
+        ('SERVICOS', 'Prestação de Serviços'),
+        ('OUTROS', 'Outros / Genérico'),
+    )
+
+    # --- DADOS BÁSICOS ---
+    nome_fantasia = models.CharField(max_length=255)
+    razao_social = models.CharField(max_length=255, blank=True, null=True)
+    cnpj = models.CharField(max_length=18, unique=True, null=True, blank=True)
+    data_criacao = models.DateTimeField(auto_now_add=True)
+    ativa = models.BooleanField(default=True)
+    ramo_atividade = models.CharField(max_length=20, choices=RAMO_CHOICES, default='OUTROS')
+
+    # --- PLANO E PAGAMENTO ---
     plano = models.CharField(max_length=20, choices=PLANOS_CHOICES, default='ESSENCIAL')
     valor_mensalidade = models.DecimalField(max_digits=10, decimal_places=2, default=99.90)
     data_vencimento = models.DateField(null=True, blank=True)
-    ativa = models.BooleanField(default=True)
-    # Integração Asaas
     asaas_customer_id = models.CharField(max_length=100, blank=True, null=True)
 
+    # --- PERSONALIZAÇÃO ---
+    logo = models.ImageField(upload_to='logos_empresas/', null=True, blank=True)
+    mensagem_cupom = models.CharField(max_length=200, default="Obrigado pela preferência!", blank=True)
+    cor_sistema = models.CharField(max_length=20, default="#0d6efd", help_text="Cor principal do sistema (Hex)")
+    
+    # --- DADOS FISCAIS ---
+    ambiente_fiscal = models.CharField(max_length=20, default='HOMOLOGACAO', choices=(('HOMOLOGACAO', 'Teste'), ('PRODUCAO', 'Valendo')))
+    token_api_fiscal = models.CharField(max_length=200, blank=True, null=True)
+    csc_token = models.CharField(max_length=100, blank=True, null=True)
+
+    def __str__(self):
+        return self.nome_fantasia
+
+    # --- LÓGICA DE NEGÓCIO ---
     @property
     def dias_restantes(self):
         if not self.data_vencimento:
@@ -30,63 +58,26 @@ class Empresa(models.Model):
         delta = self.data_vencimento - hoje
         return delta.days
 
-    # --- 2. DADOS BÁSICOS ---
-    nome_fantasia = models.CharField(max_length=255)
-    razao_social = models.CharField(max_length=255, blank=True, null=True)
-    cnpj = models.CharField(max_length=18, unique=True)
-    data_criacao = models.DateTimeField(auto_now_add=True)
-    
-    # --- 3. PERSONALIZAÇÃO (LOGO E CORES) ---
-    logo = models.ImageField(upload_to='logos_empresas/', null=True, blank=True)
-    mensagem_cupom = models.CharField(max_length=200, default="Obrigado pela preferência!", blank=True)
-    cor_sistema = models.CharField(max_length=20, default="#0d6efd", help_text="Cor principal do sistema (Hex)")
-    
-    # --- 4. DADOS FISCAIS ---
-    ambiente_fiscal = models.CharField(max_length=20, default='HOMOLOGACAO', choices=(('HOMOLOGACAO', 'Teste'), ('PRODUCAO', 'Valendo')))
-    token_api_fiscal = models.CharField(max_length=200, blank=True, null=True)
-    csc_token = models.CharField(max_length=100, blank=True, null=True)
-
-    def __str__(self):
-        return self.nome_fantasia
-
-    # --- LÓGICA DE LIMITES ---
     def limite_usuarios(self):
         if self.plano == 'ESSENCIAL': return 4
         if self.plano == 'PRO': return 10
-        return 999 # Expansão ilimitado
-
-    # Em core/models.py, dentro da class Empresa:
+        return 999 
 
     def tem_acesso_financeiro(self):
-        # 1. Se o plano for PRO ou EXPANSAO, libera sempre
+        # 1. Planos Pagos
         if self.plano in ['PRO', 'EXPANSAO']:
             return True
-            
-        # 2. Se estiver no Período de Teste (baseado na data de vencimento)
-        # Se a data de vencimento for futura ou hoje, e o plano for ESSENCIAL (trial), libera.
-        # Assumimos que no trial o plano fica como ESSENCIAL mas a data é curta.
-        from django.utils import timezone
+        # 2. Período de Teste (Degustação)
         hoje = timezone.now().date()
-        
-        # Se tiver data de vencimento e ela ainda não passou, libera como "degustação"
         if self.data_vencimento and self.data_vencimento >= hoje:
             return True
-            
         return False
-    
-    logo = models.ImageField(upload_to='logos_empresas/', null=True, blank=True)
-    mensagem_cupom = models.CharField(max_length=200, default="Obrigado pela preferência!", blank=True)
-    cor_sistema = models.CharField(max_length=20, default="#0d6efd", help_text="Cor principal do sistema (Hex)")
-    
-    # Dados Fiscais (Para o futuro)
-    ambiente_fiscal = models.CharField(max_length=20, default='HOMOLOGACAO', choices=(('HOMOLOGACAO', 'Teste'), ('PRODUCAO', 'Valendo')))
-    token_api_fiscal = models.CharField(max_length=200, blank=True, null=True)
-    csc_token = models.CharField(max_length=100, blank=True, null=True)
 
-    def __str__(self):
-        return self.nome_fantasia
-
+# =========================================================
+#  2. USUÁRIO (VINCULADO À EMPRESA)
+# =========================================================
 class Usuario(AbstractUser):
+    # DICA: Usamos 'Empresa' entre aspas ou direto se a classe já foi lida acima
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, null=True, blank=True, related_name='usuarios')
     
     TIPO_CHOICES = (
@@ -102,7 +93,7 @@ class Usuario(AbstractUser):
         return f"{self.username} ({self.get_cargo_display()})"
 
 # =========================================================
-#  2. CLASSE ABSTRATA
+#  3. CLASSE ABSTRATA (BASE PARA OS OUTROS)
 # =========================================================
 class ModeloDoTenant(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
@@ -111,7 +102,7 @@ class ModeloDoTenant(models.Model):
         abstract = True
 
 # =========================================================
-#  3. CADASTROS BÁSICOS
+#  4. CADASTROS BÁSICOS
 # =========================================================
 class Fornecedor(ModeloDoTenant):
     razao_social = models.CharField(max_length=200)
@@ -136,7 +127,7 @@ class FormaPagamento(ModeloDoTenant):
         return self.nome
 
 # =========================================================
-#  4. CAIXA E MOVIMENTO
+#  5. CAIXA E MOVIMENTO
 # =========================================================
 class Caixa(ModeloDoTenant):
     nome = models.CharField(max_length=50, default="Caixa 01")
@@ -163,7 +154,7 @@ class MovimentoCaixa(ModeloDoTenant):
         return f"Turno #{self.id} - {self.operador.username}"
 
 # =========================================================
-#  5. PRODUTOS E CLIENTES
+#  6. PRODUTOS E CLIENTES
 # =========================================================
 class Produto(ModeloDoTenant):
     nome = models.CharField(max_length=200)
@@ -210,7 +201,7 @@ class Cliente(ModeloDoTenant):
         return self.nome
 
 # =========================================================
-#  6. VENDAS
+#  7. VENDAS
 # =========================================================
 class Venda(ModeloDoTenant):
     STATUS_CHOICES = (
@@ -255,7 +246,7 @@ class ItemVenda(models.Model):
         return self.quantidade * self.preco_unitario
 
 # =========================================================
-#  7. FINANCEIRO
+#  8. FINANCEIRO
 # =========================================================
 class Lancamento(ModeloDoTenant):
     TIPO_CHOICES = (
@@ -270,16 +261,17 @@ class Lancamento(ModeloDoTenant):
     pago = models.BooleanField(default=False)
     venda_origem = models.ForeignKey(Venda, on_delete=models.SET_NULL, null=True, blank=True, related_name='lancamentos')
     
+    # IMPORTANTE: Como Lancamento herda de ModeloDoTenant, ele já tem 'empresa'
+    
     def __str__(self):
         return f"{self.titulo} - {self.valor}"
     
     class Meta:
         ordering = ['data_vencimento']
-    
-    # =========================================================
-#  8. SUPORTE E AJUSTES (NOVOS)
-# =========================================================
 
+# =========================================================
+#  9. SUPORTE E AJUSTES
+# =========================================================
 class Chamado(models.Model):
     TIPO_CHOICES = (
         ('DUVIDA', 'Dúvida'),
@@ -316,7 +308,7 @@ class AjusteEstoque(ModeloDoTenant):
     )
     
     produto = models.ForeignKey(Produto, on_delete=models.CASCADE)
-    quantidade = models.IntegerField() # Pode ser negativo (saída) ou positivo (entrada)
+    quantidade = models.IntegerField() 
     motivo = models.CharField(max_length=20, choices=MOTIVO_CHOICES)
     observacao = models.TextField(blank=True, null=True)
     data_ajuste = models.DateTimeField(auto_now_add=True)
@@ -324,9 +316,3 @@ class AjusteEstoque(ModeloDoTenant):
 
     def __str__(self):
         return f"{self.produto.nome} ({self.quantidade})"
-    
-    def save(self, *args, **kwargs):
-        # Atualiza o estoque do produto automaticamente
-        # Se for perda (ex: defeito), a quantidade deve entrar negativa no form? 
-        # Vamos tratar na View: se o motivo não for ENTRADA, subtrai.
-        super().save(*args, **kwargs)

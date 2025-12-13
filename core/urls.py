@@ -15,8 +15,8 @@ urlpatterns = [
     path('orcamento/<int:venda_id>/', views.gerar_orcamento_pdf, name='gerar_orcamento_pdf'),
     path('financeiro/', views.financeiro, name='financeiro'),
     path('financeiro/nova-despesa/', views.adicionar_despesa, name='adicionar_despesa'),
-    path('saas-admin/', views.saas_painel, name='saas_painel'),
-    path('saas-admin/bloquear/<int:empresa_id>/', views.alternar_status_loja, name='alternar_status_loja'),
+  #  path('saas-admin/', views.saas_painel, name='saas_painel'),
+    #path('saas-admin/bloquear/<int:empresa_id>/', views.alternar_status_loja, name='alternar_status_loja'),
     path('login/', CustomLoginView.as_view(), name='login'),    
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('produtos/', views.lista_produtos, name='lista_produtos'),
@@ -25,7 +25,7 @@ urlpatterns = [
     path('produtos/excluir/<int:produto_id>/', views.excluir_produto, name='excluir_produto'),
     path('produtos/catalogo-qr/', views.catalogo_qr, name='catalogo_qr'),
     path('venda/cupom/<int:venda_id>/', views.imprimir_cupom, name='imprimir_cupom'),
-    path('saas-admin/contrato/<int:empresa_id>/', views.gerar_contrato_pdf, name='gerar_contrato_pdf'),
+ #   path('saas-admin/contrato/<int:empresa_id>/', views.gerar_contrato_pdf, name='gerar_contrato_pdf'),
     path('caixa/', views.gerenciar_caixa, name='gerenciar_caixa'),
     path('caixa/abrir/', views.abrir_caixa, name='abrir_caixa'),
     path('caixa/fechar/<int:movimento_id>/', views.fechar_caixa, name='fechar_caixa'),
@@ -45,7 +45,7 @@ urlpatterns = [
 
     path('relatorios/', views.relatorios, name='relatorios'),
 
-    path('configuracoes/', views.configuracoes, name='configuracoes'),
+    #path('configuracoes/', views.configuracoes, name='configuracoes'),
 
     path('estoque/painel/', views.painel_estoque, name='painel_estoque'),
 
