@@ -141,7 +141,7 @@ class ClienteForm(forms.ModelForm):
             'endereco': forms.TextInput(attrs={'class': 'form-control'}),
         }
     
-'''
+
 class ConfiguracaoEmpresaForm(forms.ModelForm):
     class Meta:
         model = Empresa
@@ -153,7 +153,7 @@ class ConfiguracaoEmpresaForm(forms.ModelForm):
             'cor_sistema': forms.TextInput(attrs={'class': 'form-control', 'type': 'color'}),
             'logo': forms.ClearableFileInput(attrs={'class': 'form-control'}),
         }
-'''
+
 class UsuarioForm(forms.ModelForm):
     senha = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'form-control'}), required=False, help_text="Deixe em branco para manter a atual")
     
