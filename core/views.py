@@ -436,7 +436,7 @@ def lista_produtos(request):
     return render(request, 'core/lista_produtos.html', {'produtos': Produto.objects.filter(empresa=request.user.empresa)})
 
 @login_required
-def adicionar_produto(request):
+def criar_produto(request):
     if request.method == 'POST':
         form = ProdutoForm(request.POST, request.FILES)
         if form.is_valid():
