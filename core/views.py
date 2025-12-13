@@ -483,17 +483,61 @@ def configuracoes(request):
         form = ConfiguracaoEmpresaForm(instance=empresa)
     return render(request, 'core/configuracoes.html', {'form': form})
 
+# core/views.py
+
 @login_required
 def financeiro(request):
-    # Vendedor continua bloqueado
-    if request.user.cargo == 'VENDEDOR': return HttpResponseForbidden("Acesso Negado")
+    # 1. VERIFICAÇÃO DE PERMISSÃO (Empresa)
+    # Se não tiver acesso financeiro (nem pago, nem teste grátis), chuta para o dashboard.
+    if not request.user.empresa.tem_acesso_financeiro():
+        messages.warning(request, "O módulo financeiro é exclusivo do plano Pro ou período de testes.")
+        return redirect('dashboard') # <--- AQUI ESTAVA O ERRO! (Provavelmente faltava esse return)
+
+    # 2. VERIFICAÇÃO DE CARGO (Usuário)
+    # Vendedor não mexe no cofre.
+    if request.user.cargo == 'VENDEDOR':
+        messages.error(request, "Seu perfil não tem permissão para acessar o financeiro.")
+        return redirect('dashboard') # <--- Garantia de retorno
+
+    # 3. LÓGICA DO FINANCEIRO (Filtros e Cálculos)
+    # Se passou pelos ifs acima, agora executamos a lógica.
     
-    # MUDANÇA AQUI:
-    # Se NÃO for Superusuário E a empresa NÃO tiver acesso, aí sim bloqueia.
-    # (Ou seja: Se for superusuário, ele pula esse if e entra)
-    if not request.user.is_superuser and not request.user.empresa.tem_acesso_financeiro(): 
-        return render(request, 'core/erro_plano.html')
+    # Filtro de data (Padrão: Mês atual)
+    data_inicio = request.GET.get('data_inicio')
+    data_fim = request.GET.get('data_fim')
     
+    lancamentos = Lancamento.objects.filter(empresa=request.user.empresa)
+    
+    if data_inicio and data_fim:
+        lancamentos = lancamentos.filter(data_vencimento__range=[data_inicio, data_fim])
+    else:
+        # Se não filtrou, pega os últimos 30 dias ou mês corrente
+        hoje = timezone.now().date()
+        inicio_mes = hoje.replace(day=1)
+        lancamentos = lancamentos.filter(data_vencimento__gte=inicio_mes)
+
+    # Totais
+    total_receitas = lancamentos.filter(tipo='RECEITA', pago=True).aggregate(Sum('valor'))['valor__sum'] or 0
+    total_despesas = lancamentos.filter(tipo='DESPESA', pago=True).aggregate(Sum('valor'))['valor__sum'] or 0
+    saldo = total_receitas - total_despesas
+    
+    # Previsão (inclui o que não foi pago)
+    previsto_receitas = lancamentos.filter(tipo='RECEITA').aggregate(Sum('valor'))['valor__sum'] or 0
+    previsto_despesas = lancamentos.filter(tipo='DESPESA').aggregate(Sum('valor'))['valor__sum'] or 0
+    saldo_previsto = previsto_receitas - previsto_despesas
+
+    context = {
+        'lancamentos': lancamentos.order_by('-data_vencimento'),
+        'total_receitas': total_receitas,
+        'total_despesas': total_despesas,
+        'saldo': saldo,
+        'saldo_previsto': saldo_previsto,
+        'hoje': timezone.now().date()
+    }
+
+    # 4. RETORNO FINAL (A resposta que o navegador espera)
+    return render(request, 'core/financeiro.html', context)    
+
 @login_required
 def adicionar_despesa(request):
     if request.method == 'POST':
