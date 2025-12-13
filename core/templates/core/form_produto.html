@@ -1,82 +1,70 @@
 {% extends 'core/base.html' %}
-
-{% block title %}{{ titulo }}{% endblock %}
-
 {% block content %}
-<div class="container" style="max-width: 800px;">
-    <div class="card shadow-sm">
-        <div class="card-header bg-white">
-            <h4 class="mb-0">{{ titulo }}</h4>
+<div class="container mt-4">
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0 fw-bold"><i class="bi bi-box-seam me-2"></i>{{ titulo }}</h4>
+            <a href="{% url 'lista_produtos' %}" class="btn btn-sm btn-light text-primary fw-bold">Voltar</a>
         </div>
-        <div class="card-body">
-<form method="POST" enctype="multipart/form-data">
+        <div class="card-body p-4">
+            <form method="POST" enctype="multipart/form-data">
                 {% csrf_token %}
                 
                 <div class="row g-3">
                     <div class="col-md-8">
-                        <label class="form-label fw-bold">Nome do Produto</label>
+                        <label class="form-label fw-bold small text-muted">NOME DO PRODUTO</label>
                         {{ form.nome }}
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label">Código de Barras</label>
+                        <label class="form-label fw-bold small text-muted">CÓDIGO DE BARRAS</label>
                         {{ form.codigo_barras }}
                     </div>
-                    
-                    <div class="col-md-6">
-                        <label class="form-label">Categoria</label>
+
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold small text-primary">TAMANHO</label>
+                        {{ form.tamanho }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small text-primary">COR / ESTAMPA</label>
+                        {{ form.cor }}
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label fw-bold small text-muted">CATEGORIA</label>
                         {{ form.categoria }}
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Fornecedor</label>
+
+                    <hr class="text-muted opacity-25 my-4">
+
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold small text-muted">PREÇO CUSTO (R$)</label>
+                        {{ form.preco_custo }}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold small text-success">PREÇO VENDA (R$)</label>
+                        {{ form.preco_venda }}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold small text-muted">ESTOQUE ATUAL</label>
+                        {{ form.estoque_atual }}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold small text-muted">FORNECEDOR</label>
                         {{ form.fornecedor }}
                     </div>
 
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold text-success">Preço de Venda (R$)</label>
-                        {{ form.preco_venda }}
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label text-muted">Preço de Custo (R$)</label>
-                        {{ form.preco_custo }}
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label text-info">Comissão (%)</label>
-                        {{ form.porcentagem_comissao }}
-                        <div class="form-text text-muted small">Opcional. Ex: 5.0 para 5%</div>
-                    </div>
-
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">Estoque Atual</label>
-                        {{ form.estoque_atual }}
-                    </div>
-
-                    <div class="col-md-12">
-                        <div class="p-3 bg-light border rounded">
-                            <label class="form-label fw-bold mb-2">Foto do Produto</label>
-                            <div class="d-flex align-items-center gap-3">
-                                {% if form.instance.foto %}
-                                    <div class="text-center">
-                                        <img src="{{ form.instance.foto.url }}" alt="Foto" class="img-thumbnail" style="width: 80px; height: 80px; object-fit: cover;">
-                                    </div>
-                                {% endif %}
-                                <div class="flex-grow-1">
-                                    {{ form.foto }}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-12">
-                        <label class="form-label">Descrição / Detalhes</label>
+                    <div class="col-12">
+                        <label class="form-label fw-bold small text-muted">DESCRIÇÃO DETALHADA</label>
                         {{ form.descricao }}
+                    </div>
+                    
+                    <div class="col-12">
+                        <label class="form-label fw-bold small text-muted">FOTO DO PRODUTO</label>
+                        {{ form.foto }}
                     </div>
                 </div>
 
-                <hr class="my-4">
-
-                <div class="d-flex justify-content-end gap-2">
-                    <a href="{% url 'lista_produtos' %}" class="btn btn-secondary">Cancelar</a>
-                    <button type="submit" class="btn btn-success px-4">
+                <div class="mt-4 d-grid gap-2 d-md-flex justify-content-md-end">
+                    <button type="submit" class="btn btn-success btn-lg px-5 shadow-sm">
                         <i class="bi bi-check-lg"></i> Salvar Produto
                     </button>
                 </div>

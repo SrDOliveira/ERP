@@ -35,7 +35,6 @@ class AjusteEstoqueForm(forms.ModelForm):
         self.fields['produto'].queryset = Produto.objects.filter(empresa=user.empresa)
 
 # --- PRODUTO ---
-# core/forms.py
 
 class ProdutoForm(forms.ModelForm):
     class Meta:

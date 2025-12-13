@@ -1,152 +1,188 @@
-{% extends 'core/base.html' %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDV - Nexum ERP</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        body { 
+            background-color: #f0f2f5; 
+            height: 100vh; 
+            overflow: hidden; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        /* Coluna Esquerda (Busca e Lista) */
+        .pdv-main { height: 100vh; display: flex; flex-direction: column; padding: 20px; }
+        
+        .search-box {
+            background: white; padding: 20px; border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+        
+        .product-list {
+            flex: 1; overflow-y: auto; background: white;
+            border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
 
-{% block title %}PDV - Venda #{{ venda.id }}{% endblock %}
+        /* Coluna Direita (Cupom / Recibo) */
+        .pdv-sidebar {
+            background: #1a1f2c; /* Azul Escuro Profissional */
+            color: white; height: 100vh;
+            display: flex; flex-direction: column;
+            box-shadow: -5px 0 20px rgba(0,0,0,0.1);
+        }
 
-{% block content %}
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-md-6">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0"><i class="bi bi-box-seam"></i> Adicionar Produtos</h5>
+        .receipt-header { padding: 30px 20px; background: #252b3b; border-bottom: 1px solid #363d52; }
+        .receipt-body { flex: 1; overflow-y: auto; padding: 20px; font-family: 'Courier New', Courier, monospace; }
+        .receipt-footer { padding: 30px 20px; background: #0066FF; color: white; }
+
+        /* Estilização da Tabela de Itens */
+        .table-custom thead th { background-color: #f8f9fa; border: none; color: #6c757d; }
+        .table-custom tbody td { vertical-align: middle; border-bottom: 1px solid #f0f0f0; padding: 15px; }
+        
+        /* Input Gigante */
+        .input-hero {
+            border: none; font-size: 1.5rem; width: 100%; outline: none;
+            border-bottom: 2px solid #e9ecef; transition: 0.3s;
+        }
+        .input-hero:focus { border-color: #0066FF; }
+
+        .item-row:hover { background-color: #f8faff; }
+    </style>
+</head>
+<body>
+
+<div class="row g-0">
+    <div class="col-md-8 col-lg-9 pdv-main">
+        
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="fw-bold text-secondary"><i class="bi bi-cart4 text-primary"></i> Nexum PDV</h4>
+            <div>
+                <span class="badge bg-white text-dark border px-3 py-2 rounded-pill">
+                    <i class="bi bi-person-circle"></i> Vendedor: {{ request.user.first_name }}
+                </span>
+                <a href="{% url 'dashboard' %}" class="btn btn-outline-danger btn-sm ms-2 rounded-pill px-3">Sair <i class="bi bi-x-lg"></i></a>
+            </div>
+        </div>
+
+        <div class="search-box d-flex align-items-center">
+            <i class="bi bi-upc-scan fs-2 text-muted me-3"></i>
+            <div class="flex-grow-1">
+                <form method="POST" action="{% url 'adicionar_item' venda.id %}" id="form-barcode">
+                    {% csrf_token %}
+                    <input type="text" name="codigo" id="codigo_barras" class="input-hero" placeholder="Biçar produto ou digitar código..." autofocus autocomplete="off">
+                </form>
+            </div>
+            <button class="btn btn-primary btn-lg rounded-circle ms-3" style="width: 60px; height: 60px;">
+                <i class="bi bi-plus-lg"></i>
+            </button>
+        </div>
+
+        <div class="product-list p-3">
+            <table class="table table-custom mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 50%;">PRODUTO</th>
+                        <th class="text-center">QTD</th>
+                        <th class="text-end">UNITÁRIO</th>
+                        <th class="text-end">TOTAL</th>
+                        <th class="text-center">AÇÃO</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in venda.itens.all %}
+                    <tr class="item-row">
+                        <td>
+                            <div class="fw-bold">{{ item.produto.nome }}</div>
+                            <small class="text-muted">
+                                {% if item.produto.tamanho %}{{ item.produto.tamanho }} - {% endif %}
+                                {{ item.produto.cor|default:"" }}
+                            </small>
+                        </td>
+                        <td class="text-center fw-bold fs-5">{{ item.quantidade }}</td>
+                        <td class="text-end">R$ {{ item.preco_unitario }}</td>
+                        <td class="text-end fw-bold text-primary">R$ {{ item.subtotal }}</td>
+                        <td class="text-center">
+                            <a href="#" class="text-danger opacity-50 hover-opacity-100"><i class="bi bi-trash"></i></a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center py-5 text-muted">
+                            <i class="bi bi-basket fs-1 d-block mb-3 opacity-25"></i>
+                            Caixa Livre. Aguardando produtos...
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="col-md-4 col-lg-3 pdv-sidebar">
+        <div class="receipt-header">
+            <h5 class="m-0 fw-bold">RESUMO DA VENDA</h5>
+            <small class="opacity-50">#{{ venda.id }} - {{ venda.data_venda|date:"d/m/Y H:i" }}</small>
+        </div>
+
+        <div class="receipt-body">
+            <div class="d-flex justify-content-between mb-3 pb-3 border-bottom border-secondary">
+                <span>CLIENTE</span>
+                <span class="text-end">{{ venda.cliente.nome|default:"Consumidor Final" }}</span>
+            </div>
+
+            {% for item in venda.itens.all %}
+            <div class="d-flex justify-content-between mb-2 small">
+                <span class="text-truncate" style="max-width: 60%;">{{ item.produto.nome }}</span>
+                <span>{{ item.quantidade }}x R$ {{ item.preco_unitario }}</span>
+            </div>
+            {% endfor %}
+
+            <div class="mt-4 pt-3 border-top border-secondary border-dashed">
+                <div class="d-flex justify-content-between">
+                    <span>Subtotal</span>
+                    <span>R$ {{ venda.valor_total }}</span>
                 </div>
-                <div class="card-body">
-                    <form action="{% url 'adicionar_item' venda.id %}" method="POST">
-                        {% csrf_token %}
-                        
-                        <div class="mb-3">
-                            <label class="form-label">Selecione o Produto</label>
-                            <select name="produto" class="form-select form-select-lg" required autofocus>
-                                <option value="">-- Digite ou escolha --</option>
-                                {% for p in produtos %}
-                                <option value="{{ p.id }}">{{ p.nome }} - R$ {{ p.preco_venda }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        
-                        <div class="row">
-                            <div class="col-4">
-                                <label class="form-label">Qtd</label>
-                                <input type="number" name="quantidade" value="1" min="1" class="form-control form-control-lg">
-                            </div>
-                            <div class="col-8">
-                                <label>&nbsp;</label>
-                                <button type="submit" class="btn btn-primary btn-lg w-100">
-                                    <i class="bi bi-plus-circle"></i> ADICIONAR
-                                </button>
-                            </div>
-                        </div>
-                    </form>
+                <div class="d-flex justify-content-between text-warning">
+                    <span>Desconto</span>
+                    <span>R$ {{ venda.desconto }}</span>
                 </div>
             </div>
         </div>
 
-        <div class="col-md-6">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Venda #{{ venda.id }}</h5>
-                    <span class="badge bg-warning text-dark">{{ venda.get_status_display }}</span>
-                </div>
-                <div class="card-body p-0">
-                    <div class="p-3 bg-light border-bottom">
-                        <form method="POST">
-                            {% csrf_token %}
-                            <div class="input-group">
-                                <span class="input-group-text">Cliente</span>
-                                <select name="cliente" class="form-select" onchange="this.form.submit()">
-                                    <option value="">-- Selecione --</option>
-                                    {% for c in clientes %}
-                                    <option value="{{ c.id }}" {% if venda.cliente.id == c.id %}selected{% endif %}>
-                                        {{ c.nome }}
-                                    </option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                        </form>
-                    </div>
-
-                    <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
-                        <table class="table table-striped mb-0">
-                            <thead>
-                                <tr>
-                                    <th>Item</th>
-                                    <th class="text-center">Qtd</th>
-                                    <th class="text-end">Total</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for item in venda.itens.all %}
-                                <tr>
-                                    <td>{{ item.produto.nome }}</td>
-                                    <td class="text-center">{{ item.quantidade }}</td>
-                                    <td class="text-end">R$ {{ item.subtotal }}</td>
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="3" class="text-center text-muted py-4">
-                                        Nenhum item adicionado ainda.
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div class="card-footer bg-white border-top-0">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h4>Total:</h4>
-                        <h2 class="text-success fw-bold">R$ {{ total }}</h2>
-                    </div>
-                    
-                    <div class="d-flex gap-2 mb-3">
-                        <a href="{% url 'gerar_orcamento_pdf' venda.id %}" target="_blank" class="btn btn-outline-primary flex-grow-1">
-                            <i class="bi bi-printer"></i> Orçamento A4
-                        </a>
-                        <a href="{% url 'imprimir_cupom' venda.id %}" target="_blank" class="btn btn-outline-dark flex-grow-1">
-                            <i class="bi bi-receipt"></i> Cupom
-                        </a>
-                    </div>
-
-                    <hr>
-
-                    <form method="POST">
-                        {% csrf_token %}
-                        <input type="hidden" name="acao" value="fechar_venda">
-                        
-                        <div class="mb-3">
-                            <label class="fw-bold text-muted">Forma de Pagamento</label>
-                            <select name="forma_pagamento" class="form-select form-select-lg border-success" required>
-                                <option value="">-- Selecione --</option>
-                                {% for fp in formas_pagamento %}
-                                <option value="{{ fp.id }}">{{ fp.nome }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-
-                        <div class="form-check form-switch mb-3 p-3 border rounded bg-light">
-                            <input class="form-check-input" type="checkbox" id="emitirFiscal" name="emitir_fiscal">
-                            <label class="form-check-label fw-bold" for="emitirFiscal">
-                                <i class="bi bi-receipt-cutoff"></i> Emitir Nota Fiscal (NFC-e)
-                            </label>
-                        </div>
-
-                        <button type="submit" class="btn btn-success btn-lg w-100 py-3">
-                            <i class="bi bi-check-circle-fill"></i> FINALIZAR VENDA (F2)
-                        </button>
-                    </form>
-                </div>
+        <div class="receipt-footer text-center">
+            <small class="d-block mb-1 opacity-75">TOTAL A PAGAR</small>
+            <h1 class="fw-bold display-4 mb-4">R$ {{ venda.valor_total }}</h1>
+            
+            <div class="d-grid gap-2">
+                <button class="btn btn-light btn-lg fw-bold text-primary">
+                    <i class="bi bi-cash-coin me-2"></i> FINALIZAR (F2)
+                </button>
+                <button class="btn btn-outline-light border-0 opacity-75">
+                    Cancelar Venda
+                </button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    document.addEventListener('keydown', function(event) {
-        if (event.key === 'F2') {
-            // Foca no botão de finalizar se apertar F2
-            document.querySelector('button[type="submit"].btn-success').click();
-        }
+    document.addEventListener("DOMContentLoaded", function() {
+        document.getElementById("codigo_barras").focus();
+        
+        // Atalho F2 para finalizar
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'F2') {
+                // Aqui você chamaria a função de fechar venda
+                alert("Abrir modal de pagamento..."); 
+            }
+        });
     });
 </script>
-{% endblock %}
+
+</body>
+</html>
