@@ -2,35 +2,48 @@ from django.urls import path
 from . import views
 from .views import ServiceWorkerView, ManifestView
 from django.contrib.auth import views as auth_views
-from .views import CustomLoginView # Adicione junto com os outros imports
-
+from .views import CustomLoginView
 
 urlpatterns = [
     path('sw.js', ServiceWorkerView.as_view(), name='sw.js'),
     path('manifest.json', ManifestView.as_view(), name='manifest.json'),
     path('', views.dashboard, name='dashboard'),
-    path('nova-venda/', views.criar_venda, name='criar_venda'),  # <--- O erro diz que esta linha não existe
+    
+    # Vendas e PDV
+    path('nova-venda/', views.criar_venda, name='criar_venda'),
     path('pdv/<int:venda_id>/', views.pdv, name='pdv'),
     path('pdv/<int:venda_id>/adicionar/', views.adicionar_item, name='adicionar_item'),
     path('orcamento/<int:venda_id>/', views.gerar_orcamento_pdf, name='gerar_orcamento_pdf'),
+    path('venda/cupom/<int:venda_id>/', views.imprimir_cupom, name='imprimir_cupom'),
+
+    # Financeiro
     path('financeiro/', views.financeiro, name='financeiro'),
     path('financeiro/nova-despesa/', views.adicionar_despesa, name='adicionar_despesa'),
-    path('saas-admin/', views.saas_painel, name='saas_painel'),
-    path('saas-admin/bloquear/<int:empresa_id>/', views.alternar_status_loja, name='alternar_status_loja'),
-    path('login/', CustomLoginView.as_view(), name='login'),    
-    path('logout/', auth_views.LogoutView.as_view(), name='logout'),
-    path('produtos/', views.lista_produtos, name='lista_produtos'),
-    path('produtos/novo/', views.criar_produto, name='criar_produto'),
-    path('produtos/editar/<int:produto_id>/', views.editar_produto, name='editar_produto'),
-    path('produtos/excluir/<int:produto_id>/', views.excluir_produto, name='excluir_produto'),
-    path('produtos/importar/', views.importar_produtos, name='importar_produtos'),
-    path('produtos/catalogo-qr/', views.catalogo_qr, name='catalogo_qr'),
-    path('venda/cupom/<int:venda_id>/', views.imprimir_cupom, name='imprimir_cupom'),
-    path('saas-admin/contrato/<int:empresa_id>/', views.gerar_contrato_pdf, name='gerar_contrato_pdf'),
+    path('comissoes/', views.minhas_comissoes, name='minhas_comissoes'),
     path('caixa/', views.gerenciar_caixa, name='gerenciar_caixa'),
     path('caixa/abrir/', views.abrir_caixa, name='abrir_caixa'),
     path('caixa/fechar/<int:movimento_id>/', views.fechar_caixa, name='fechar_caixa'),
-    path('comissoes/', views.minhas_comissoes, name='minhas_comissoes'),
+
+    # Admin e SaaS
+    path('saas-admin/', views.saas_painel, name='saas_painel'),
+    path('saas-admin/bloquear/<int:empresa_id>/', views.alternar_status_loja, name='alternar_status_loja'),
+    path('saas-admin/contrato/<int:empresa_id>/', views.gerar_contrato_pdf, name='gerar_contrato_pdf'),
+    path('saas-admin/responder/<int:chamado_id>/', views.responder_chamado, name='responder_chamado'),
+
+    # Autenticação
+    path('login/', CustomLoginView.as_view(), name='login'),    
+    path('logout/', auth_views.LogoutView.as_view(), name='logout'),
+    path('cadastro/', views.cadastro_loja, name='cadastro_loja'),
+    path('inicio/', views.rota_inicial, name='rota_inicial'),
+
+    # Produtos
+    path('produtos/', views.lista_produtos, name='lista_produtos'),
+    path('produtos/novo/', views.criar_produto, name='criar_produto'),
+    path('produtos/importar/', views.importar_produtos, name='importar_produtos'), # <--- DEIXE SÓ ESTA AQUI
+    path('produtos/editar/<int:produto_id>/', views.editar_produto, name='editar_produto'),
+    path('produtos/excluir/<int:produto_id>/', views.excluir_produto, name='excluir_produto'),
+    path('produtos/catalogo-qr/', views.catalogo_qr, name='catalogo_qr'),
+
     # Clientes
     path('clientes/', views.lista_clientes, name='lista_clientes'),
     path('clientes/novo/', views.adicionar_cliente, name='adicionar_cliente'),
@@ -44,24 +57,23 @@ urlpatterns = [
     path('categorias/', views.lista_categorias, name='lista_categorias'),
     path('categorias/novo/', views.adicionar_categoria, name='adicionar_categoria'),
 
+    # Outros
     path('relatorios/', views.relatorios, name='relatorios'),
-
     path('configuracoes/', views.configuracoes, name='configuracoes'),
-
+    path('suporte/', views.suporte, name='suporte'),
+    
+    # Estoque
     path('estoque/painel/', views.painel_estoque, name='painel_estoque'),
+    path('estoque/ajuste/', views.ajuste_estoque, name='ajuste_estoque'),
 
     # Equipe
     path('equipe/', views.lista_equipe, name='lista_equipe'),
     path('equipe/novo/', views.adicionar_colaborador, name='adicionar_colaborador'),
     path('equipe/editar/<int:user_id>/', views.editar_colaborador, name='editar_colaborador'),
     path('equipe/excluir/<int:user_id>/', views.excluir_colaborador, name='excluir_colaborador'),
-    path('cadastro/', views.cadastro_loja, name='cadastro_loja'),
+    
+    # Pagamentos
     path('pagamento/iniciar/<str:plano>/', views.iniciar_pagamento, name='iniciar_pagamento'),
     path('webhook/asaas/', views.webhook_asaas, name='webhook_asaas'),
     path('assinatura/planos/', views.escolher_plano, name='escolher_plano'),
-    path('inicio/', views.rota_inicial, name='rota_inicial'),
-    path('suporte/', views.suporte, name='suporte'),
-    path('estoque/ajuste/', views.ajuste_estoque, name='ajuste_estoque'),
-    path('saas-admin/responder/<int:chamado_id>/', views.responder_chamado, name='responder_chamado'),
-    path('produtos/importar/', views.importar_produtos, name='importar_produtos'),
 ]
