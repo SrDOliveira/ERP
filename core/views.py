@@ -78,7 +78,7 @@ def dashboard(request):
 
     ultimas_vendas = Venda.objects.filter(empresa=empresa_usuario).order_by('-data_venda')[:5]
 
-    return render(request, 'core/index.html', {
+    return render(request, 'core/dashboard.html', {
         'total_clientes': Cliente.objects.filter(empresa=empresa_usuario).count(),
         'total_produtos': Produto.objects.filter(empresa=empresa_usuario).count(),
         'estoque_baixo_count': estoque_baixo_count,
