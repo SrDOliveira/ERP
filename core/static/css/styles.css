@@ -1,0 +1,92 @@
+:root {
+    --primary-color: #003366; /* Azul SAP Profundo */
+    --secondary-color: #6c757d;
+    --success-color: #28a745;
+    --sidebar-width: 260px;
+    --header-height: 60px;
+}
+
+body {
+    background-color: #f5f7fa;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    overflow-x: hidden;
+}
+
+/* --- SIDEBAR (Menu Lateral) --- */
+.sidebar {
+    width: var(--sidebar-width);
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    background: linear-gradient(180deg, #1a233a 0%, #0d1117 100%);
+    color: #fff;
+    transition: all 0.3s;
+    z-index: 1000;
+    overflow-y: auto;
+}
+
+.sidebar a {
+    color: rgba(255,255,255,0.8);
+    text-decoration: none;
+    display: block;
+    padding: 12px 15px;
+    border-radius: 6px;
+    margin-bottom: 5px;
+    transition: all 0.2s;
+}
+
+.sidebar a:hover {
+    background-color: rgba(255,255,255,0.1);
+    color: #fff;
+    transform: translateX(5px);
+}
+
+/* --- CONTEÚDO PRINCIPAL --- */
+.main-wrapper {
+    margin-left: var(--sidebar-width);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.3s;
+}
+
+.content {
+    padding: 25px;
+    flex: 1;
+}
+
+/* --- MODIFICADORES DO DASHBOARD SAP --- */
+.sap-module-card {
+    transition: all 0.2s;
+    cursor: pointer;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background: #fff;
+}
+.sap-module-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    border-color: var(--primary-color);
+    background-color: #f8faff;
+}
+
+/* --- MOBILE & RESPONSIVIDADE --- */
+@media (max-width: 768px) {
+    .sidebar {
+        margin-left: calc(var(--sidebar-width) * -1);
+    }
+    .sidebar.active {
+        margin-left: 0;
+    }
+    .main-wrapper {
+        margin-left: 0;
+    }
+    .overlay.active {
+        display: block;
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 999;
+    }
+}
