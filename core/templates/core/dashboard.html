@@ -1,0 +1,225 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Painel de Controle{% endblock %}
+
+{% block content %}
+<style>
+    /* Estilo "Modo SAP/Desktop" */
+    .sap-module-card {
+        transition: all 0.2s;
+        cursor: pointer;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        background: #fff;
+    }
+    .sap-module-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        border-color: #0066FF;
+        background-color: #f8faff;
+    }
+    .sap-icon {
+        font-size: 2.5rem;
+        color: #4a5568;
+        margin-bottom: 10px;
+    }
+    .sap-title {
+        font-weight: 700;
+        color: #2d3748;
+        font-size: 1.1rem;
+    }
+    .sap-desc {
+        font-size: 0.85rem;
+        color: #718096;
+    }
+    
+    /* Barra de Transação tipo SAP */
+    .transaction-bar {
+        background: #e2e8f0;
+        padding: 10px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        border: 1px solid #cbd5e0;
+    }
+    .t-code-input {
+        border: 1px solid #a0aec0;
+        padding: 5px 10px;
+        border-radius: 4px;
+        font-family: 'Courier New', Courier, monospace;
+        text-transform: uppercase;
+        width: 200px;
+        font-weight: bold;
+    }
+</style>
+
+<div class="container-fluid">
+    
+    <div class="transaction-bar d-flex justify-content-between">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-terminal-fill text-secondary"></i>
+            <span class="fw-bold text-secondary small me-2">COMANDO:</span>
+            <input type="text" id="tcode" class="t-code-input" placeholder="Ex: PDV, PROD..." onkeypress="checkTransaction(event)">
+            <button class="btn btn-sm btn-secondary" onclick="executeTransaction()"><i class="bi bi-arrow-return-left"></i></button>
+        </div>
+        <div class="text-muted small">
+            <i class="bi bi-hdd-network"></i> Ambiente: <strong>Produção</strong> | Usuário: <strong>{{ request.user.username }}</strong>
+        </div>
+    </div>
+
+    <h4 class="mb-4 text-secondary fw-bold"><i class="bi bi-grid-fill"></i> Menu Principal Nexum</h4>
+
+    <div class="row g-4">
+        
+        <div class="col-md-6 col-lg-3">
+            <div class="card h-100 shadow-sm border-0 bg-light">
+                <div class="card-header fw-bold text-primary"><i class="bi bi-cart-fill"></i> VENDAS & FRENTE DE LOJA</div>
+                <div class="card-body p-2">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'criar_venda' %}" class="btn btn-white text-start border hover-shadow">
+                            <i class="bi bi-pc-display me-2 text-primary"></i> Novo PDV (Frente de Caixa)
+                        </a>
+                        <a href="#" class="btn btn-white text-start border hover-shadow">
+                            <i class="bi bi-receipt me-2 text-success"></i> Histórico de Vendas
+                        </a>
+                        <a href="#" class="btn btn-white text-start border hover-shadow">
+                            <i class="bi bi-file-earmark-text me-2 text-warning"></i> Orçamentos
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-3">
+            <div class="card h-100 shadow-sm border-0 bg-light">
+                <div class="card-header fw-bold text-success"><i class="bi bi-box-seam-fill"></i> MATERIAIS & ESTOQUE</div>
+                <div class="card-body p-2">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'lista_produtos' %}" class="btn btn-white text-start border hover-shadow">
+                            <i class="bi bi-list-ul me-2"></i> Listar Produtos (MM03)
+                        </a>
+                        <a href="{% url 'criar_produto' %}" class="btn btn-white text-start border hover-shadow">
+                            <i class="bi bi-plus-square me-2"></i> Cadastrar Produto (MM01)
+                        </a>
+                        <a href="{% url 'importar_produtos' %}" class="btn btn-white text-start border hover-shadow">
+                            <i class="bi bi-file-excel me-2"></i> Importação em Massa
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-3">
+            <div class="card h-100 shadow-sm border-0 bg-light">
+                <div class="card-header fw-bold text-danger"><i class="bi bi-cash-coin"></i> FINANÇAS & CONTROLE</div>
+                <div class="card-body p-2">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'financeiro' %}" class="btn btn-white text-start border hover-shadow">
+                            <i class="bi bi-graph-up-arrow me-2"></i> Fluxo de Caixa
+                        </a>
+                        <a href="{% url 'gerenciar_caixa' %}" class="btn btn-white text-start border hover-shadow">
+                            <i class="bi bi-wallet2 me-2"></i> Sangria e Reforço
+                        </a>
+                        <a href="{% url 'minhas_comissoes' %}" class="btn btn-white text-start border hover-shadow">
+                            <i class="bi bi-people me-2"></i> Comissões
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-3">
+            <div class="card h-100 shadow-sm border-0 bg-light">
+                <div class="card-header fw-bold text-dark"><i class="bi bi-gear-fill"></i> ADMINISTRAÇÃO</div>
+                <div class="card-body p-2">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'lista_equipe' %}" class="btn btn-white text-start border hover-shadow">
+                            <i class="bi bi-person-badge me-2"></i> Gestão de Usuários
+                        </a>
+                        <a href="{% url 'configuracoes' %}" class="btn btn-white text-start border hover-shadow">
+                            <i class="bi bi-sliders me-2"></i> Configurações Gerais
+                        </a>
+                        <a href="{% url 'suporte' %}" class="btn btn-white text-start border hover-shadow">
+                            <i class="bi bi-headset me-2"></i> Suporte Técnico
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="mt-5">
+        <h6 class="text-muted fw-bold border-bottom pb-2">FAVORITOS / ACESSO RÁPIDO</h6>
+        <div class="d-flex flex-wrap gap-3 mt-3">
+            
+            <a href="{% url 'criar_venda' %}" class="text-decoration-none text-center p-3 border rounded bg-white sap-module-card" style="width: 120px;">
+                <i class="bi bi-cart4 d-block fs-3 text-primary mb-1"></i>
+                <small class="fw-bold text-dark">Novo PDV</small>
+            </a>
+
+            <a href="{% url 'lista_produtos' %}" class="text-decoration-none text-center p-3 border rounded bg-white sap-module-card" style="width: 120px;">
+                <i class="bi bi-box d-block fs-3 text-success mb-1"></i>
+                <small class="fw-bold text-dark">Estoque</small>
+            </a>
+
+            <a href="{% url 'financeiro' %}" class="text-decoration-none text-center p-3 border rounded bg-white sap-module-card" style="width: 120px;">
+                <i class="bi bi-pie-chart d-block fs-3 text-danger mb-1"></i>
+                <small class="fw-bold text-dark">Finanças</small>
+            </a>
+
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // Lógica da Barra de Transação (O "Charme" do SAP)
+    function checkTransaction(event) {
+        if (event.key === 'Enter') {
+            executeTransaction();
+        }
+    }
+
+    function executeTransaction() {
+        const code = document.getElementById('tcode').value.toUpperCase().trim();
+        const baseUrl = window.location.origin;
+
+        // MAPA DE TRANSAÇÕES (Códigos Curtos)
+        const transactions = {
+            'PDV': "{% url 'criar_venda' %}",
+            'PROD': "{% url 'lista_produtos' %}",
+            'MM01': "{% url 'criar_produto' %}", // Brincadeira com SAP MM
+            'MM03': "{% url 'lista_produtos' %}",
+            'FIN': "{% url 'financeiro' %}",
+            'CAIXA': "{% url 'gerenciar_caixa' %}",
+            'CONF': "{% url 'configuracoes' %}",
+            'SAIR': "{% url 'logout' %}"
+        };
+
+        if (transactions[code]) {
+            // Se for rota interna do Django, redireciona
+            if (transactions[code].includes('/')) {
+                window.location.href = baseUrl + transactions[code];
+            } else {
+                window.location.href = transactions[code];
+            }
+        } else {
+            alert('Transação ' + code + ' inexistente.');
+        }
+    }
+
+    // Foca na barra de comando ao abrir a tela (Produtividade!)
+    document.addEventListener("DOMContentLoaded", function() {
+        document.getElementById("tcode").focus();
+    });
+</script>
+
+<style>
+    .hover-shadow:hover {
+        background-color: #f8f9fa;
+        border-color: #0066FF !important;
+    }
+</style>
+{% endblock %}
