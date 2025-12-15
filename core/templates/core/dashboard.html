@@ -4,36 +4,7 @@
 
 {% block content %}
 <style>
-    /* Estilo "Modo SAP/Desktop" */
-    .sap-module-card {
-        transition: all 0.2s;
-        cursor: pointer;
-        border: 1px solid #e0e0e0;
-        border-radius: 8px;
-        background: #fff;
-    }
-    .sap-module-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-        border-color: #0066FF;
-        background-color: #f8faff;
-    }
-    .sap-icon {
-        font-size: 2.5rem;
-        color: #4a5568;
-        margin-bottom: 10px;
-    }
-    .sap-title {
-        font-weight: 700;
-        color: #2d3748;
-        font-size: 1.1rem;
-    }
-    .sap-desc {
-        font-size: 0.85rem;
-        color: #718096;
-    }
-    
-    /* Barra de Transação tipo SAP */
+    /* Estilo Específico da Dashboard SAP */
     .transaction-bar {
         background: #e2e8f0;
         padding: 10px;
@@ -52,23 +23,26 @@
         width: 200px;
         font-weight: bold;
     }
+    /* Cards já estão no CSS global, mas reforçamos aqui se precisar */
 </style>
 
 <div class="container-fluid">
     
-    <div class="transaction-bar d-flex justify-content-between">
+    <div class="transaction-bar d-flex justify-content-between flex-wrap gap-2">
         <div class="d-flex align-items-center gap-2">
             <i class="bi bi-terminal-fill text-secondary"></i>
-            <span class="fw-bold text-secondary small me-2">COMANDO:</span>
-            <input type="text" id="tcode" class="t-code-input" placeholder="Ex: PDV, PROD..." onkeypress="checkTransaction(event)">
+            <span class="fw-bold text-secondary small me-2 d-none d-md-inline">COMANDO:</span>
+            <input type="text" id="tcode" class="t-code-input" placeholder="Ex: PDV, ESTOQUE..." onkeypress="checkTransaction(event)">
             <button class="btn btn-sm btn-secondary" onclick="executeTransaction()"><i class="bi bi-arrow-return-left"></i></button>
         </div>
-        <div class="text-muted small">
-            <i class="bi bi-hdd-network"></i> Ambiente: <strong>Produção</strong> | Usuário: <strong>{{ request.user.username }}</strong>
+        <div class="text-muted small d-flex align-items-center">
+            <i class="bi bi-hdd-network me-2"></i> 
+            <span class="d-none d-sm-inline">Ambiente: <strong>Produção</strong> | </span>
+            Usuário: <strong>{{ request.user.username }}</strong>
         </div>
     </div>
 
-    <h4 class="mb-4 text-secondary fw-bold"><i class="bi bi-grid-fill"></i> Menu Principal Nexum</h4>
+    <h4 class="mb-4 text-secondary fw-bold border-bottom pb-2"><i class="bi bi-grid-fill"></i> Central de Operações</h4>
 
     <div class="row g-4">
         
@@ -82,9 +56,6 @@
                         </a>
                         <a href="#" class="btn btn-white text-start border hover-shadow">
                             <i class="bi bi-receipt me-2 text-success"></i> Histórico de Vendas
-                        </a>
-                        <a href="#" class="btn btn-white text-start border hover-shadow">
-                            <i class="bi bi-file-earmark-text me-2 text-warning"></i> Orçamentos
                         </a>
                     </div>
                 </div>
@@ -140,9 +111,6 @@
                         <a href="{% url 'configuracoes' %}" class="btn btn-white text-start border hover-shadow">
                             <i class="bi bi-sliders me-2"></i> Configurações Gerais
                         </a>
-                        <a href="{% url 'suporte' %}" class="btn btn-white text-start border hover-shadow">
-                            <i class="bi bi-headset me-2"></i> Suporte Técnico
-                        </a>
                     </div>
                 </div>
             </div>
@@ -190,7 +158,7 @@
         const transactions = {
             'PDV': "{% url 'criar_venda' %}",
             'PROD': "{% url 'lista_produtos' %}",
-            'MM01': "{% url 'criar_produto' %}", // Brincadeira com SAP MM
+            'MM01': "{% url 'criar_produto' %}", 
             'MM03': "{% url 'lista_produtos' %}",
             'FIN': "{% url 'financeiro' %}",
             'CAIXA': "{% url 'gerenciar_caixa' %}",
@@ -199,7 +167,6 @@
         };
 
         if (transactions[code]) {
-            // Se for rota interna do Django, redireciona
             if (transactions[code].includes('/')) {
                 window.location.href = baseUrl + transactions[code];
             } else {
@@ -210,7 +177,6 @@
         }
     }
 
-    // Foca na barra de comando ao abrir a tela (Produtividade!)
     document.addEventListener("DOMContentLoaded", function() {
         document.getElementById("tcode").focus();
     });
@@ -219,7 +185,7 @@
 <style>
     .hover-shadow:hover {
         background-color: #f8f9fa;
-        border-color: #0066FF !important;
+        border-color: var(--primary-color) !important;
     }
 </style>
 {% endblock %}
